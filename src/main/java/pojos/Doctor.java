@@ -7,21 +7,24 @@ public class Doctor {
     private String name;
     private String surname;
     private String email;
+    private String phonenumber;
     private ArrayList patients;
     private ArrayList appointments;
 
-    public Doctor(String name, String surname, String email, ArrayList patients, ArrayList appointments){
+    public Doctor(String name, String surname, String email, String phonenumber, ArrayList patients, ArrayList appointments){
         this.name = name;
         this.surname = surname;
+        this.phonenumber = phonenumber;
         this.email = email;
         this.patients = patients;
         this.appointments = appointments;
     }
 
-    public Doctor(int id, String name, String surname, String email, ArrayList patients, ArrayList appointments){
+    public Doctor(int id, String name, String surname, String phonenumber,String email, ArrayList patients, ArrayList appointments){
         this.id = id;
         this.name = name;
         this.surname = surname;
+        this.phonenumber = phonenumber;
         this.email = email;
         this.patients = patients;
         this.appointments = appointments;
@@ -75,15 +78,24 @@ public class Doctor {
         this.appointments = appointments;
     }
 
+    public String getPhonenumber() {
+        return phonenumber;
+    }
+
+    public void setPhonenumber(String phonenumber) {
+        this.phonenumber = phonenumber;
+    }
+
     @Override
-    public String toString(){
+    public String toString() {
         return "Doctor{" +
-                "id=" + id +
+                "appointments=" + appointments +
+                ", id=" + id +
                 ", name='" + name + '\'' +
                 ", surname='" + surname + '\'' +
                 ", email='" + email + '\'' +
+                ", phonenumber='" + phonenumber + '\'' +
                 ", patients=" + patients +
-                ", appointments=" + appointments +
                 '}';
     }
 }

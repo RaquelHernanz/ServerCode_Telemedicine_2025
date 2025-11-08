@@ -1,25 +1,24 @@
 package pojos;
 
+import java.time.LocalDateTime;
+
 public class Appointment {
     private int id;
-    private String date;
-    private String type;
-    private String state;
+    private LocalDateTime date;
+    private String message;
     private Doctor doctor;
     private Patient patient;
 
-    public Appointment(String date, String type, String state, Doctor doctor, Patient patient){
+    public Appointment(LocalDateTime date, String message, Doctor doctor, Patient patient){
         this.date = date;
-        this.type = type;
-        this.state = state;
+        this.message = message;
         this.doctor = doctor;
         this.patient = patient;
     }
-    public Appointment(int id, String date, String type, String state, Doctor doctor, Patient patient){
+    public Appointment(int id, LocalDateTime date, String message, Doctor doctor, Patient patient){
         this.id = id;
         this.date = date;
-        this.type = type;
-        this.state = state;
+        this.message = message;
         this.doctor = doctor;
         this.patient = patient;
     }
@@ -32,28 +31,12 @@ public class Appointment {
         this.id = id;
     }
 
-    public String getDate(){
-        return date;
+    public String getMessage(){
+        return message;
     }
 
-    public void setDate(String date){
-        this.date = date;
-    }
-
-    public String getType(){
-        return type;
-    }
-
-    public void setType(String type){
-        this.type = type;
-    }
-
-    public String getState(){
-        return state;
-    }
-
-    public void setState(String state){
-        this.state = state;
+    public void setMessage(String message){
+        this.message = message;
     }
 
     public Doctor getDoctor(){
@@ -72,13 +55,20 @@ public class Appointment {
         this.patient = patient;
     }
 
+    public LocalDateTime getDate() {
+        return date;
+    }
+
+    public void setDate(LocalDateTime date) {
+        this.date = date;
+    }
+
     @Override
-    public String toString(){
+    public String toString() {
         return "Appointment{" +
-                "id=" + id +
-                ", date='" + date + '\'' +
-                ", type='" + type + '\'' +
-                ", state='" + state + '\'' +
+                "date=" + date +
+                ", id=" + id +
+                ", message='" + message + '\'' +
                 ", doctor=" + doctor +
                 ", patient=" + patient +
                 '}';

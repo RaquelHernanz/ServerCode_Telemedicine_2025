@@ -6,7 +6,7 @@ public class User {
     private Role role;
 
     public User(String username, String password, Role role){
-        this.username = username;
+        this.username = username;//or email
         this.password = password;
         this.role = role;
     }

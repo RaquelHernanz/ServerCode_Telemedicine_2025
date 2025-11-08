@@ -1,5 +1,7 @@
 package utilities;
 
+import pojos.Sex;
+
 import java.util.Scanner;
 import java.util.regex.Pattern;
 
@@ -11,6 +13,29 @@ public class Utilities {
     public static String readString(String string) {
         System.out.print(string);
         return scanner.nextLine();
+    }
+
+    public static Sex readSex (String string) {
+        System.out.print(string);
+        String Sex_string = scanner.nextLine();
+        Sex_string = Sex_string.toUpperCase();
+        if (Sex_string.equals("MALE")){
+            return Sex.MALE;
+        }else if (Sex_string.equals("FEMALE")){
+            return Sex.FEMALE;
+        }else{
+            return Sex.OTHER;
+        }
+    }
+
+    public static String returnSexString (Sex sex){
+        if (sex.equals(Sex.MALE)) {
+            return "MALE";
+        }else if (sex.equals(Sex.FEMALE)) {
+            return "FEMALE";
+        }else {
+            return "OTHER";
+        }
     }
 
     public static int readInt(String integer) {

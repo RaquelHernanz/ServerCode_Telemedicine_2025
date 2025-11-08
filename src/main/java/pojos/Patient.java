@@ -8,28 +8,34 @@ public class Patient {
     private String surname;
     private String email;
     private Doctor doctor;
+    private String phonenumber;
     private String dob;
+    private Sex sex;
     private ArrayList<Appointment> appointments;
     private ArrayList<Measurement>measurements;
     private ArrayList<Symptoms> symptoms;
 
-    public Patient(String name, String surname, String email, String dob, ArrayList appointments, ArrayList measurements, ArrayList symptoms){
+    public Patient(String name, String surname, String email, Sex sex,String dob, ArrayList appointments, ArrayList measurements, ArrayList symptoms){
         this.name = name;
         this.surname = surname;
         this.email = email;
         this.dob = dob;
+        this.sex = sex;
+        this.phonenumber = phonenumber;
         this.appointments = appointments;
         this.measurements = measurements;
         this.symptoms = symptoms;
     }
 
-    public Patient(int id, String name, String surname, String email, Doctor doctor, String dob, ArrayList appointments, ArrayList measurements, ArrayList symptoms){
+    public Patient(int id, String name, String surname, String email, Sex sex, String phonenumber,Doctor doctor, String dob, ArrayList appointments, ArrayList measurements, ArrayList symptoms){
         this.id = id;
         this.name = name;
         this.surname = surname;
         this.email = email;
         this.doctor = doctor;
         this.dob = dob;
+        this.sex = sex;
+        this.phonenumber = phonenumber;
         this.appointments = appointments;
         this.measurements = measurements;
         this.symptoms = symptoms;
@@ -83,36 +89,46 @@ public class Patient {
         return appointments;
     }
 
-    public void setAppointments(ArrayList appointments){
+    public void setAppointments(ArrayList<Appointment> appointments) {
         this.appointments = appointments;
     }
 
-    public ArrayList getMeasurements(){
-        return measurements;
-    }
-
-    public void setMeasurements(ArrayList measurements){
+    public void setMeasurements(ArrayList<Measurement> measurements) {
         this.measurements = measurements;
     }
 
-    public ArrayList getSymptoms(){
-        return symptoms;
+    public String getPhonenumber() {
+        return phonenumber;
     }
 
-    public void setSymptoms(ArrayList symptoms){
+    public void setPhonenumber(String phonenumber) {
+        this.phonenumber = phonenumber;
+    }
+
+    public Sex getSex() {
+        return sex;
+    }
+
+    public void setSex(Sex sex) {
+        this.sex = sex;
+    }
+
+    public void setSymptoms(ArrayList<Symptoms> symptoms) {
         this.symptoms = symptoms;
     }
 
     @Override
-    public String toString(){
+    public String toString() {
         return "Patient{" +
-                "id=" + id +
+                "appointments=" + appointments +
+                ", id=" + id +
                 ", name='" + name + '\'' +
                 ", surname='" + surname + '\'' +
                 ", email='" + email + '\'' +
                 ", doctor=" + doctor +
+                ", phonenumber='" + phonenumber + '\'' +
                 ", dob='" + dob + '\'' +
-                ", appointments=" + appointments +
+                ", sex=" + sex +
                 ", measurements=" + measurements +
                 ", symptoms=" + symptoms +
                 '}';

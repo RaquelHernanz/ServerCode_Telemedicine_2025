@@ -1,21 +1,27 @@
 package pojos;
 
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+
 public class Symptoms {
     private int id;
     private String description;
-    private String date_hour;
+    private LocalDate date;
+    private LocalDateTime hour;
     private Patient patient;
 
-    public Symptoms(String description, String date_hour, Patient patient){
+    public Symptoms(String description, LocalDate date,LocalDateTime hour, Patient patient){
         this.description = description;
-        this.date_hour = date_hour;
+        this.date = date;
+        this.hour = hour;
         this.patient = patient;
     }
 
-    public Symptoms(int id, String description, String date_hour, Patient patient){
+    public Symptoms(int id, String description, LocalDate date,LocalDateTime hour, Patient patient){
         this.id = id;
         this.description = description;
-        this.date_hour = date_hour;
+        this.date = date;
+        this.hour = hour;
         this.patient = patient;
     }
 
@@ -35,14 +41,6 @@ public class Symptoms {
         this.description = description;
     }
 
-    public String getDate_hour(){
-        return date_hour;
-    }
-
-    public void setDate_hour(String date_hour){
-        this.date_hour = date_hour;
-    }
-
     public Patient getPatient(){
         return patient;
     }
@@ -51,12 +49,29 @@ public class Symptoms {
         this.patient = patient;
     }
 
+    public LocalDate getDate() {
+        return date;
+    }
+
+    public void setDate(LocalDate date) {
+        this.date = date;
+    }
+
+    public LocalDateTime getHour() {
+        return hour;
+    }
+
+    public void setHour(LocalDateTime hour) {
+        this.hour = hour;
+    }
+
     @Override
-    public String toString(){
+    public String toString() {
         return "Symptoms{" +
-                "id=" + id +
+                "date=" + date +
+                ", id=" + id +
                 ", description='" + description + '\'' +
-                ", date_hour='" + date_hour + '\'' +
+                ", hour=" + hour +
                 ", patient=" + patient +
                 '}';
     }
