@@ -1,0 +1,139 @@
+How the messages are going to be structure.
+
+{
+  "type": "REQUEST",
+  "action": "REGISTER_PATIENT",
+  "role": "PATIENT",
+  "requestId": "req-1",
+  "payload": {
+    "user": {
+      "username": "rachel@example.com",
+      "password": "secreto123",
+      "role": "PATIENT"
+    },
+    "patient": {
+      "name": "Rachel",
+      "surname": "Hernanz",
+      "email": "rachel@example.com",
+      "phonenumber": "+34999999999",
+      "dob": "1999-04-10",
+      "sex": "FEMALE"
+    }
+  }
+}
+
+{
+  "type": "RESPONSE",
+  "action": "REGISTER_PATIENT",
+  "requestId": "req-1",
+  "status": "OK",
+  "message": "Patient registered successfully",
+  "payload": {
+    "patientId": 12
+  }
+}
+
+{
+  "type": "REQUEST",
+  "action": "LOGIN",
+  "role": "PATIENT",
+  "requestId": "req-2",
+  "payload": {
+    "username": "rachel@example.com",
+    "password": "secreto123"
+  }
+}
+
+{
+  "type": "RESPONSE",
+  "action": "LOGIN",
+  "requestId": "req-2",
+  "status": "OK",
+  "message": "Login successful",
+  "payload": {
+    "userId": 12,
+    "role": "PATIENT",
+    "token": "session-xyz"   // si quieres gestionar sesiones
+  }
+}
+
+{
+  "type": "REQUEST",
+  "action": "SEND_SYMPTOMS",
+  "role": "PATIENT",
+  "requestId": "req-3",
+  "payload": {
+    "patientId": 12,
+    "description": "Dolor en el pecho y dificultad al respirar",
+    "date": "2025-11-09",
+    "hour": "2025-11-09T10:30:00"
+  }
+}
+
+{
+  "type": "REQUEST",
+  "action": "SEND_MEASUREMENT",
+  "role": "PATIENT",
+  "requestId": "req-4",
+  "payload": {
+    "patientId": 12,
+    "type": "ECG",                        // ECG | EDA
+    "date": "2025-11-09T10:32:00",
+    "values": [823, 810, 799, 780, 765]   // tu List<Integer>
+  }
+}
+
+{
+  "type": "REQUEST",
+  "action": "REQUEST_APPOINTMENT",
+  "role": "PATIENT",
+  "requestId": "req-5",
+  "payload": {
+    "patientId": 12,
+    "doctorId": 3,
+    "date": "2025-11-15T09:00:00",
+    "message": "Revisión por dolor torácico recurrente"
+  }
+}
+
+{
+  "type": "RESPONSE",
+  "action": "REQUEST_APPOINTMENT",
+  "requestId": "req-5",
+  "status": "OK",
+  "message": "Appointment created",
+  "payload": {
+    "appointmentId": 42
+  }
+}
+
+{
+  "type": "REQUEST",
+  "action": "LIST_APPOINTMENTS",
+  "role": "DOCTOR",
+  "requestId": "req-6",
+  "payload": {
+    "doctorId": 3,
+    "patientId": 12
+  }
+}
+
+{
+  "type": "RESPONSE",
+  "action": "LIST_APPOINTMENTS",
+  "requestId": "req-6",
+  "status": "OK",
+  "message": "Appointments retrieved",
+  "payload": {
+    "appointments": [
+      {
+        "id": 42,
+        "date": "2025-11-15T09:00:00",
+        "message": "Revisión por dolor torácico recurrente",
+        "doctorId": 3,
+        "patientId": 12
+      }
+    ]
+  }
+}
+
