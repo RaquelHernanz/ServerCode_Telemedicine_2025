@@ -197,7 +197,7 @@ public class Protocol {
         String content   = payload.get("content").getAsString();
         String timestamp = payload.get("timestamp").getAsString();
 
-        // TODO: aquí guardarías el mensaje en la BD, notificarías al paciente, etc.
+        // Aquí se guardará el mensaje en la BD, notificar al paciente, etc.
         int messageId = 5001; // ID generado por la BD
 
         JsonObject resp = baseResponse("SEND_MESSAGE", requestId, "OK", "Message delivered");
