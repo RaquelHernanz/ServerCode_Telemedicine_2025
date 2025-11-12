@@ -20,6 +20,7 @@ public class Patient {
     public Patient (){}
 
     public Patient(String name, String surname, String email, String phonenumber,Sex sex,String dob, ArrayList <Appointment> appointments, ArrayList <Measurement> measurements, ArrayList <Symptoms> symptoms, Doctor doctor, ArrayList<String> messages) {
+        super();
         this.name = name;
         this.surname = surname;
         this.email = email;
@@ -34,6 +35,7 @@ public class Patient {
     }
 
     public Patient(int id, String name, String surname, String email, Sex sex, String phonenumber, String dob, ArrayList <Appointment> appointments, ArrayList <Measurement> measurements, ArrayList <Symptoms> symptoms,Doctor doctor, ArrayList <String> messages){
+        super();
         this.id = id;
         this.name = name;
         this.surname = surname;
@@ -139,6 +141,17 @@ public class Patient {
         this.messages = messages;
     }
 
+    public void addAppointment(Appointment appointment){
+        this.appointments.add(appointment);
+    }
+
+    public void addMeasurement(Measurement measurement){
+        this.measurements.add(measurement);
+    }
+
+    public void addSymptom(Symptoms symptom){
+        this.symptoms.add(symptom);
+    }
     @Override
     public String toString() {
         return "Patient{" +
