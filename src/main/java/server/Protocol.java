@@ -12,7 +12,7 @@ import com.google.gson.Gson;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonSyntaxException;
 
-//Parte de los métodos siguen vacíos, antes hay que configurar al paciente y el
+//Parte de los métodos siguen vacíos, antes hay que configurar al paciente y el doctor
 
 public class Protocol {
 

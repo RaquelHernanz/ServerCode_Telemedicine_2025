@@ -2,6 +2,7 @@ package pojos;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Objects;
 
 public class Measurement {
     private int id;
@@ -76,5 +77,17 @@ public class Measurement {
                 ", values=" + values +
                 ", patient=" + patient +
                 '}';
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (o == null || getClass() != o.getClass()) return false;
+        Measurement that = (Measurement) o;
+        return id == that.id && type == that.type && Objects.equals(values, that.values) && Objects.equals(date, that.date) && Objects.equals(patient, that.patient);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(id, type, values, date, patient);
     }
 }

@@ -1,6 +1,7 @@
 package pojos;
 
 import java.util.ArrayList;
+import java.util.Objects;
 
 public class Patient {
     private int id;
@@ -16,7 +17,9 @@ public class Patient {
     private ArrayList<Symptoms> symptoms;
     private ArrayList<String> messages;
 
-    public Patient(String name, String surname, String email, String phonenumber,Sex sex,String dob, ArrayList appointments, ArrayList measurements, ArrayList symptoms, Doctor doctor, ArrayList<String> messages) {
+    public Patient (){}
+
+    public Patient(String name, String surname, String email, String phonenumber,Sex sex,String dob, ArrayList <Appointment> appointments, ArrayList <Measurement> measurements, ArrayList <Symptoms> symptoms, Doctor doctor, ArrayList<String> messages) {
         this.name = name;
         this.surname = surname;
         this.email = email;
@@ -30,7 +33,7 @@ public class Patient {
         this.messages = messages;
     }
 
-    public Patient(int id, String name, String surname, String email, Sex sex, String phonenumber, String dob, ArrayList appointments, ArrayList measurements, ArrayList symptoms,Doctor doctor, ArrayList messages){
+    public Patient(int id, String name, String surname, String email, Sex sex, String phonenumber, String dob, ArrayList <Appointment> appointments, ArrayList <Measurement> measurements, ArrayList <Symptoms> symptoms,Doctor doctor, ArrayList <String> messages){
         this.id = id;
         this.name = name;
         this.surname = surname;
@@ -42,7 +45,6 @@ public class Patient {
         this.appointments = appointments;
         this.measurements = measurements;
         this.symptoms = symptoms;
-        this.doctor = doctor;
         this.messages = messages;
     }
 
@@ -90,7 +92,7 @@ public class Patient {
 
     public void setDob(String dob){this.dob = dob;}
 
-    public ArrayList getAppointments(){
+    public ArrayList <Appointment> getAppointments(){
         return appointments;
     }
 
@@ -153,5 +155,17 @@ public class Patient {
                 ", symptoms=" + symptoms +
                 ", messages=" + messages +
                 '}';
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (o == null || getClass() != o.getClass()) return false;
+        Patient patient = (Patient) o;
+        return id == patient.id && Objects.equals(name, patient.name) && Objects.equals(surname, patient.surname) && Objects.equals(email, patient.email) && Objects.equals(doctor, patient.doctor) && Objects.equals(phonenumber, patient.phonenumber) && Objects.equals(dob, patient.dob) && sex == patient.sex && Objects.equals(appointments, patient.appointments) && Objects.equals(measurements, patient.measurements) && Objects.equals(symptoms, patient.symptoms) && Objects.equals(messages, patient.messages);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(id, name, surname, email, doctor, phonenumber, dob, sex, appointments, measurements, symptoms, messages);
     }
 }

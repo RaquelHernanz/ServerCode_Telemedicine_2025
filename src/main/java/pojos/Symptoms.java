@@ -1,24 +1,24 @@
 package pojos;
 
-import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.Objects;
 
 public class Symptoms {
     private int id;
     private String description;
-    private LocalDateTime date_hour;
+    private LocalDateTime dateTime;
     private Patient patient;
 
     public Symptoms(String description,LocalDateTime data_hour, Patient patient){
         this.description = description;
-        this.date_hour = data_hour;
+        this.dateTime = data_hour;
         this.patient = patient;
     }
 
     public Symptoms(int id, String description, LocalDateTime date_hour, Patient patient){
         this.id = id;
         this.description = description;
-        this.date_hour = date_hour;
+        this.dateTime = date_hour;
         this.patient = patient;
     }
 
@@ -46,21 +46,33 @@ public class Symptoms {
         this.patient = patient;
     }
 
-    public LocalDateTime getDate_hour() {
-        return date_hour;
+    public LocalDateTime getDateTime() {
+        return dateTime;
     }
 
-    public void setDate_hour(LocalDateTime date_hour) {
-        this.date_hour = date_hour;
+    public void setDateTime(LocalDateTime dateTime) {
+        this.dateTime = dateTime;
     }
 
     @Override
     public String toString() {
         return "Symptoms{" +
-                "date_hour=" + date_hour +
+                "dateTime=" + dateTime +
                 ", id=" + id +
                 ", description='" + description + '\'' +
                 ", patient=" + patient +
                 '}';
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (o == null || getClass() != o.getClass()) return false;
+        Symptoms symptoms = (Symptoms) o;
+        return id == symptoms.id && Objects.equals(description, symptoms.description) && Objects.equals(dateTime, symptoms.dateTime) && Objects.equals(patient, symptoms.patient);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(id, description, dateTime, patient);
     }
 }
