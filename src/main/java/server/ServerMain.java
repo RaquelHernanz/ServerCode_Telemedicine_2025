@@ -1,5 +1,7 @@
 package server;
 
+import server.database.DatabaseManager;
+
 import java.io.IOException;
 import java.net.ServerSocket;
 import java.net.Socket;
@@ -16,6 +18,8 @@ public class ServerMain {
     public static final int PORT = 9000; // puerto del servidor y al que se tienen que conectar el patient y el doctor
 
     public static void main(String[] args) {
+        DatabaseManager.connect();
+
         ExecutorService clientPool = Executors.newCachedThreadPool(); // crea un "pool" de hilos para manejar varios clientes a la vez
         // permite manejar varios clientes A LA VEZ
         // si un cliente se desconecta, el hijo se puede reusar
@@ -42,5 +46,7 @@ public class ServerMain {
             clientPool.shutdown(); // limpia la bolsa, el pool. se terminan los hilos
             System.out.println("[Server] Server stopped."); // se para el server
         }
+
     }
+
 }
