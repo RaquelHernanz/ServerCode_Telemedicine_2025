@@ -1,7 +1,13 @@
 package server;
 
 import java.io.IOException;
-import pojos.User;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
+
+import com.google.gson.JsonArray;
+import pojos.*;
 import com.google.gson.Gson;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonSyntaxException;
@@ -45,6 +51,8 @@ public class Protocol {
                     return handleListMeasurements(req, requestId);
                 case "LIST_SYMPTOMS":
                     return handleListSymptoms(req, requestId);
+                case "LIST_DOCTORS":
+                    return handleListDoctors(req, requestId);
                 default:
                     return error(requestId, action, "Unknown action: " + action);
             }
@@ -71,61 +79,179 @@ public class Protocol {
 
     private static String handleRegisterDoctor(JsonObject req, String requestId) {
         JsonObject payload = getPayload(req);
-        int newDoctorId = 1;
+
+        // payload debe venir con dos objetos:
+        // - user   (username/password/role)
+        // - doctor (name/surname/email/phonenumber)
+        JsonObject userJson = payload.getAsJsonObject("user");
+        JsonObject doctorJson = payload.getAsJsonObject("doctor");
+
+        String username = userJson.get("username").getAsString(); // normalmente email
+        String password = userJson.get("password").getAsString();
+        // String roleStr = userJson.get("role").getAsString(); // aquí sabes que será "DOCTOR"
+
+        // Crear el POJO Doctor a partir del JSON
+        pojos.Doctor doctor = new pojos.Doctor(
+                doctorJson.get("name").getAsString(),
+                doctorJson.get("surname").getAsString(),
+                doctorJson.get("email").getAsString(),
+                doctorJson.get("phonenumber").getAsString(),
+                new java.util.ArrayList<>(),
+                new java.util.ArrayList<>(),
+                new java.util.ArrayList<>()
+        );
+
+        int newDoctorId;
+        try {
+            // Registramos al doctor y guardamos credenciales
+            newDoctorId = DataStorage.registerDoctor(doctor, password);
+        } catch (IllegalArgumentException e) {
+            // Por ejemplo, email duplicado
+            return error(requestId, "REGISTER_DOCTOR", e.getMessage());
+        }
 
         JsonObject resp = baseResponse("REGISTER_DOCTOR", requestId, "OK",
                 "Doctor registered successfully");
         JsonObject respPayload = new JsonObject();
         respPayload.addProperty("doctorId", newDoctorId);
         resp.add("payload", respPayload);
+
         return gson.toJson(resp);
     }
+
+    private static String handleListDoctors(JsonObject req, String requestId) {
+        java.util.List<Doctor> doctors = DataStorage.listAllDoctors();
+
+        JsonObject resp = baseResponse("LIST_DOCTORS", requestId, "OK",
+                "Doctor list retrieved");
+
+        com.google.gson.JsonArray arr = new com.google.gson.JsonArray();
+        for (Doctor d : doctors) {
+            JsonObject dJson = new JsonObject();
+            dJson.addProperty("id", d.getId());
+            dJson.addProperty("name", d.getName());
+            dJson.addProperty("surname", d.getSurname());
+            dJson.addProperty("email", d.getEmail());
+            dJson.addProperty("phonenumber", d.getPhonenumber());
+            arr.add(dJson);
+        }
+
+        JsonObject payload = new JsonObject();
+        payload.add("doctors", arr);
+        resp.add("payload", payload);
+
+        return gson.toJson(resp);
+    }
+
 
     private static String handleLogin(JsonObject req, String requestId) {
         JsonObject payload = getPayload(req);
         String username = payload.has("username") ? payload.get("username").getAsString() : "";
         String password = payload.has("password") ? payload.get("password").getAsString() : "";
 
-        // Aquí validarías en la BD
-        boolean valid = true;
-
-        if (!valid) {
+        User user = DataStorage.validateLogin(username, password);
+        if (user == null) {
             return error(requestId, "LOGIN", "Invalid username or password");
         }
 
         JsonObject resp = baseResponse("LOGIN", requestId, "OK", "Login successful");
         JsonObject respPayload = new JsonObject();
-        respPayload.addProperty("userId", 123);     // ID real
-        respPayload.addProperty("role", "PATIENT"); // o DOCTOR
-        respPayload.addProperty("token", "session-xyz");
+
+        // De momento no tenemos userId real; puedes poner 0 o generar uno si extiendes DataStorage
+        respPayload.addProperty("userId", 0);
+        respPayload.addProperty("role", user.getRole().name());
+        respPayload.addProperty("token", "session-" + username);
+
         resp.add("payload", respPayload);
         return gson.toJson(resp);
     }
 
+
     private static String handleSendSymptoms(JsonObject req, String requestId) {
         JsonObject payload = getPayload(req);
-        // mapear a Symptoms, guardar, etc.
-        JsonObject resp = baseResponse("SEND_SYMPTOMS", requestId, "OK", "Symptoms received");
-        resp.add("payload", new JsonObject());
+
+        int patientId = payload.get("patientId").getAsInt();
+        String description = payload.get("description").getAsString();
+        String hourStr = payload.get("hour").getAsString();   // "2025-11-09T10:30:00"
+
+        Patient p = DataStorage.getPatientById(patientId);
+        if (p == null) {
+            return error(requestId, "SEND_SYMPTOMS", "Patient not found");
+        }
+        LocalDateTime date_hour = LocalDateTime.parse(hourStr);
+
+        Symptoms s = DataStorage.addSymptoms(p, description, date_hour);
+
+        JsonObject resp = baseResponse("SEND_SYMPTOMS", requestId, "OK",
+                "Symptoms stored");
+        JsonObject respPayload = new JsonObject();
+        respPayload.addProperty("symptomsId", s.getId());
+        resp.add("payload", respPayload);
+
         return gson.toJson(resp);
     }
+
+    // En el switch:
+// case "SEND_MEASUREMENT":
+//     return handleSendMeasurement(request, requestId);
 
     private static String handleSendMeasurement(JsonObject req, String requestId) {
         JsonObject payload = getPayload(req);
-        JsonObject resp = baseResponse("SEND_MEASUREMENT", requestId, "OK", "Measurement received");
-        resp.add("payload", new JsonObject());
+
+        int patientId = payload.get("patientId").getAsInt();
+        String typeStr = payload.get("type").getAsString();
+        String dateStr = payload.get("date").getAsString();
+
+        JsonArray valuesJson = payload.getAsJsonArray("values");
+        List<Integer> values = new ArrayList<>();
+        for (int i = 0; i < valuesJson.size(); i++) {
+            values.add(valuesJson.get(i).getAsInt());
+        }
+
+        Patient p = DataStorage.getPatientById(patientId);
+        if (p == null) {
+            return error(requestId, "SEND_MEASUREMENT", "Patient not found");
+        }
+
+        LocalDateTime date = LocalDateTime.parse(dateStr);
+        Measurement.Type type = Measurement.Type.valueOf(typeStr);
+
+        Measurement m = DataStorage.addMeasurement(p, type, values, date);
+
+        JsonObject resp = baseResponse("SEND_MEASUREMENT", requestId, "OK",
+                "Measurement stored");
+        JsonObject respPayload = new JsonObject();
+        respPayload.addProperty("measurementId", m.getId());
+        resp.add("payload", respPayload);
+
         return gson.toJson(resp);
     }
 
+
     private static String handleRequestAppointment(JsonObject req, String requestId) {
         JsonObject payload = getPayload(req);
-        int appointmentId = 42;
+
+        int patientId = payload.get("patientId").getAsInt();
+        int doctorId = payload.get("doctorId").getAsInt();
+        String dateStr = payload.get("date").getAsString();
+        String message = payload.get("message").getAsString();
+
+        Patient p = DataStorage.getPatientById(patientId);
+        Doctor d = DataStorage.getDoctorById(doctorId);
+        if (p == null || d == null) {
+            return error(requestId, "REQUEST_APPOINTMENT", "Patient or doctor not found");
+        }
+
+        LocalDateTime date = LocalDateTime.parse(dateStr);
+
+        Appointment appt = DataStorage.addAppointment(p, d, date, message);
 
         JsonObject resp = baseResponse("REQUEST_APPOINTMENT", requestId, "OK",
                 "Appointment created");
         JsonObject respPayload = new JsonObject();
-        respPayload.addProperty("appointmentId", appointmentId);
+        respPayload.addProperty("appointmentId", appt.getId());
         resp.add("payload", respPayload);
+
         return gson.toJson(resp);
     }
 

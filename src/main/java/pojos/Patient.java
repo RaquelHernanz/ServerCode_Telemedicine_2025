@@ -14,8 +14,9 @@ public class Patient {
     private ArrayList<Appointment> appointments;
     private ArrayList<Measurement>measurements;
     private ArrayList<Symptoms> symptoms;
+    private ArrayList<String> messages;
 
-    public Patient(String name, String surname, String email, String phonenumber,Sex sex,String dob, ArrayList appointments, ArrayList measurements, ArrayList symptoms){
+    public Patient(String name, String surname, String email, String phonenumber,Sex sex,String dob, ArrayList appointments, ArrayList measurements, ArrayList symptoms, Doctor doctor, ArrayList<String> messages) {
         this.name = name;
         this.surname = surname;
         this.email = email;
@@ -25,9 +26,11 @@ public class Patient {
         this.appointments = appointments;
         this.measurements = measurements;
         this.symptoms = symptoms;
+        this.doctor = doctor;
+        this.messages = messages;
     }
 
-    public Patient(int id, String name, String surname, String email, Sex sex, String phonenumber,Doctor doctor, String dob, ArrayList appointments, ArrayList measurements, ArrayList symptoms){
+    public Patient(int id, String name, String surname, String email, Sex sex, String phonenumber, String dob, ArrayList appointments, ArrayList measurements, ArrayList symptoms,Doctor doctor, ArrayList messages){
         this.id = id;
         this.name = name;
         this.surname = surname;
@@ -39,6 +42,8 @@ public class Patient {
         this.appointments = appointments;
         this.measurements = measurements;
         this.symptoms = symptoms;
+        this.doctor = doctor;
+        this.messages = messages;
     }
 
     public int getId(){
@@ -117,6 +122,21 @@ public class Patient {
         this.symptoms = symptoms;
     }
 
+    public ArrayList<Measurement> getMeasurements() {
+        return measurements;
+    }
+    public ArrayList<Symptoms> getSymptoms() {
+        return symptoms;
+    }
+
+    public ArrayList<String> getMessages() {
+        return messages;
+    }
+
+    public void setMessages(ArrayList<String> messages) {
+        this.messages = messages;
+    }
+
     @Override
     public String toString() {
         return "Patient{" +
@@ -131,6 +151,7 @@ public class Patient {
                 ", sex=" + sex +
                 ", measurements=" + measurements +
                 ", symptoms=" + symptoms +
+                ", messages=" + messages +
                 '}';
     }
 }

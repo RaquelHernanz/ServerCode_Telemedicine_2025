@@ -10,17 +10,19 @@ public class Doctor {
     private String phonenumber;
     private ArrayList patients;
     private ArrayList appointments;
+    private ArrayList messages;
 
-    public Doctor(String name, String surname, String email, String phonenumber, ArrayList patients, ArrayList appointments){
+    public Doctor(String name, String surname, String email, String phonenumber, ArrayList patients, ArrayList appointments,  ArrayList messages) {
         this.name = name;
         this.surname = surname;
         this.phonenumber = phonenumber;
         this.email = email;
         this.patients = patients;
         this.appointments = appointments;
+        this.messages = messages;
     }
 
-    public Doctor(int id, String name, String surname, String phonenumber,String email, ArrayList patients, ArrayList appointments){
+    public Doctor(int id, String name, String surname, String phonenumber,String email, ArrayList patients, ArrayList appointments, ArrayList messages) {
         this.id = id;
         this.name = name;
         this.surname = surname;
@@ -28,6 +30,7 @@ public class Doctor {
         this.email = email;
         this.patients = patients;
         this.appointments = appointments;
+        this.messages = messages;
     }
 
     public int getId(){
@@ -86,6 +89,14 @@ public class Doctor {
         this.phonenumber = phonenumber;
     }
 
+    public ArrayList getMessages() {
+        return messages;
+    }
+
+    public void setMessages(ArrayList messages) {
+        this.messages = messages;
+    }
+
     @Override
     public String toString() {
         return "Doctor{" +
@@ -96,6 +107,7 @@ public class Doctor {
                 ", email='" + email + '\'' +
                 ", phonenumber='" + phonenumber + '\'' +
                 ", patients=" + patients +
+                ", messages=" + messages +
                 '}';
     }
 }

@@ -6,22 +6,19 @@ import java.time.LocalDateTime;
 public class Symptoms {
     private int id;
     private String description;
-    private LocalDate date;
-    private LocalDateTime hour;
+    private LocalDateTime date_hour;
     private Patient patient;
 
-    public Symptoms(String description, LocalDate date,LocalDateTime hour, Patient patient){
+    public Symptoms(String description,LocalDateTime data_hour, Patient patient){
         this.description = description;
-        this.date = date;
-        this.hour = hour;
+        this.date_hour = data_hour;
         this.patient = patient;
     }
 
-    public Symptoms(int id, String description, LocalDate date,LocalDateTime hour, Patient patient){
+    public Symptoms(int id, String description, LocalDateTime date_hour, Patient patient){
         this.id = id;
         this.description = description;
-        this.date = date;
-        this.hour = hour;
+        this.date_hour = date_hour;
         this.patient = patient;
     }
 
@@ -49,29 +46,20 @@ public class Symptoms {
         this.patient = patient;
     }
 
-    public LocalDate getDate() {
-        return date;
+    public LocalDateTime getDate_hour() {
+        return date_hour;
     }
 
-    public void setDate(LocalDate date) {
-        this.date = date;
-    }
-
-    public LocalDateTime getHour() {
-        return hour;
-    }
-
-    public void setHour(LocalDateTime hour) {
-        this.hour = hour;
+    public void setDate_hour(LocalDateTime date_hour) {
+        this.date_hour = date_hour;
     }
 
     @Override
     public String toString() {
         return "Symptoms{" +
-                "date=" + date +
+                "date_hour=" + date_hour +
                 ", id=" + id +
                 ", description='" + description + '\'' +
-                ", hour=" + hour +
                 ", patient=" + patient +
                 '}';
     }
