@@ -1,198 +1,104 @@
 package server;
 
-//La clase es solamente para las pruebas con archivos de que funcionan los sockets
+import com.google.gson.JsonArray;
 
-import pojos.*;
-
+import java.io.BufferedReader;
+import java.io.BufferedWriter;
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.*;
 import java.time.LocalDate;
-import java.time.LocalDateTime;
-import java.util.*;
-import java.util.concurrent.atomic.AtomicInteger;
+import java.time.format.DateTimeFormatter;
 
+/**
+ * Guarda y lee señales de BITalino en CSV por carpeta de paciente.
+ * Estructura: data/<carpeta>/signals_YYYY-MM-DD.csv
+ */
 public class DataStorage {
 
-    // ==== IDs secuenciales ====
-    private static final AtomicInteger doctorIdSeq = new AtomicInteger(1);
-    private static final AtomicInteger patientIdSeq = new AtomicInteger(1);
-    private static final AtomicInteger appointmentIdSeq = new AtomicInteger(1);
-    private static final AtomicInteger measurementIdSeq = new AtomicInteger(1);
-    private static final AtomicInteger symptomsIdSeq = new AtomicInteger(1);
+    private static final Path BASE = Paths.get("data"); // carpeta base "data"
+    private static final DateTimeFormatter DATE_FMT = DateTimeFormatter.ofPattern("yyyy-MM-dd");
 
-    // ==== Credenciales (username = email normalmente) ====
-    private static final Map<String, String> credentials = new HashMap<>();
-    private static final Map<String, User.Role> rolesByUsername = new HashMap<>();
-
-    // ==== Doctores / Pacientes ====
-    private static final Map<Integer, Doctor> doctorsById = new HashMap<>();
-    private static final Map<Integer, Patient> patientsById = new HashMap<>();
-    private static final Map<String, Integer> doctorIdByEmail = new HashMap<>();
-    private static final Map<String, Integer> patientIdByEmail = new HashMap<>();
-
-    // ==== Citas, mediciones, síntomas ====
-    private static final List<Appointment> appointments = new ArrayList<>();
-    private static final List<Measurement> measurements = new ArrayList<>();
-    private static final List<Symptoms> symptomsList = new ArrayList<>();
-
-    // ===================== DOCTOR ======================
-
-    public static synchronized int registerDoctor(Doctor doctor, String password) {
-        String email = doctor.getEmail();
-
-        if (credentials.containsKey(email)) {
-            throw new IllegalArgumentException("There is already a user with email: " + email);
-        }
-
-        int id = doctorIdSeq.getAndIncrement();
-        doctor.setId(id);
-
-        credentials.put(email, password);
-        rolesByUsername.put(email, User.Role.DOCTOR);
-        doctorsById.put(id, doctor);
-        doctorIdByEmail.put(email, id);
-
-        return id;
+    // Carpeta del "paciente" (puede ser el email o "patient_<id>")
+    private static Path patientDir(String folder) {
+        return BASE.resolve(folder);
     }
 
-    public static Doctor getDoctorById(int id) {
-        return doctorsById.get(id);
+    // Crea la carpeta si no existe
+    private static void ensurePatientDir(String folder) throws IOException {
+        Files.createDirectories(patientDir(folder));
     }
 
-    public static List<Doctor> listAllDoctors() {
-        return new ArrayList<>(doctorsById.values());
-    }
+    /**
+     * Añade filas "timestamp,ecg,eda" al CSV del día. Devuelve la ruta al fichero.
+     * @param folder carpeta (ej. "ana@demo.es" o "patient_42")
+     * @param rows JsonArray con strings tipo "0.00,523,0.12" o "0,523,-"
+     */
+    public static synchronized String appendRowsToCsv(String folder, JsonArray rows) {
+        try {
+            ensurePatientDir(folder); // asegura la carpeta
 
-    // ===================== PATIENT ======================
+            // Nombre del fichero con fecha del día
+            String today = LocalDate.now().format(DATE_FMT);
+            Path file = patientDir(folder).resolve("signals_" + today + ".csv");
 
-    public static synchronized int registerPatient(Patient patient, String password) {
-        String email = patient.getEmail();
+            boolean newFile = !Files.exists(file); // para escribir cabecera si es nuevo
 
-        if (credentials.containsKey(email)) {
-            throw new IllegalArgumentException("There is already a user with email: " + email);
-        }
+            // Abrimos para APPEND (crear si no existe)
+            try (BufferedWriter bw = Files.newBufferedWriter(file, StandardCharsets.UTF_8,
+                    StandardOpenOption.CREATE, StandardOpenOption.APPEND)) {
 
-        int id = patientIdSeq.getAndIncrement();
-        patient.setId(id);
+                // Escribir cabecera la primera vez
+                if (newFile) {
+                    bw.write("timestamp,ecg,eda");
+                    bw.newLine();
+                }
 
-        credentials.put(email, password);
-        rolesByUsername.put(email, User.Role.PATIENT);
-        patientsById.put(id, patient);
-        patientIdByEmail.put(email, id);
-
-        return id;
-    }
-
-    public static Patient getPatientById(int id) {
-        return patientsById.get(id);
-    }
-
-    public static List<Patient> listAllPatients() {
-        return new ArrayList<>(patientsById.values());
-    }
-
-    public static synchronized void assignDoctorToPatient(int patientId, int doctorId) {
-        Patient p = patientsById.get(patientId);
-        Doctor d = doctorsById.get(doctorId);
-        if (p == null || d == null) {
-            throw new IllegalArgumentException("Patient or doctor not found");
-        }
-        p.setDoctor(d);
-        // Si quieres mantener lista de pacientes en Doctor:
-        if (d.getPatients() != null && !d.getPatients().contains(p)) {
-            d.getPatients().add(p);
-        }
-    }
-
-    // ===================== LOGIN ======================
-
-    public static synchronized User validateLogin(String username, String password) {
-        if (!credentials.containsKey(username)) {
-            return null;
-        }
-        if (!credentials.get(username).equals(password)) {
-            return null;
-        }
-        User.Role role = rolesByUsername.get(username);
-        if (role == null) {
-            role = User.Role.PATIENT;
-        }
-        return new User(username, password, role);
-    }
-
-    // ===================== APPOINTMENTS ======================
-
-    public static synchronized Appointment addAppointment(Patient patient, Doctor doctor,
-                                                          LocalDateTime date, String message) {
-        int id = appointmentIdSeq.getAndIncrement();
-        Appointment appt = new Appointment(date, message, doctor, patient);
-        appt.setId(id);
-        appointments.add(appt);
-        return appt;
-    }
-
-    public static List<Appointment> listAppointmentsForDoctor(int doctorId, Integer patientId) {
-        List<Appointment> result = new ArrayList<>();
-        for (Appointment a : appointments) {
-            if (a.getDoctor() != null && a.getDoctor().getId() == doctorId) {
-                if (patientId == null ||
-                        (a.getPatient() != null && a.getPatient().getId() == patientId)) {
-                    result.add(a);
+                // Escribir cada fila
+                for (var el : rows) {
+                    String row = el.getAsString();
+                    bw.write(row);
+                    bw.newLine();
                 }
             }
+
+            // Devolver ruta como String (se guarda en BD como meta)
+            return file.toString();
+
+        } catch (IOException e) {
+            e.printStackTrace();
+            return null; // en caso de error
         }
-        return result;
     }
 
-    public static List<Appointment> listAppointmentsForPatient(int patientId) {
-        List<Appointment> result = new ArrayList<>();
-        for (Appointment a : appointments) {
-            if (a.getPatient() != null && a.getPatient().getId() == patientId) {
-                result.add(a);
+    /**
+     * Lee el CSV del día y devuelve un trozo de JSON:
+     * {"header":"timestamp,ecg,eda","rows":["...","..."]}
+     */
+    public static synchronized String loadTodayAsJsonPayload(String folder) {
+        try {
+            String today = LocalDate.now().format(DATE_FMT);
+            Path file = patientDir(folder).resolve("signals_" + today + ".csv");
+            if (!Files.exists(file)) return null;
+
+            String header = null;
+            JsonArray rows = new JsonArray();
+
+            try (BufferedReader br = Files.newBufferedReader(file, StandardCharsets.UTF_8)) {
+                String line; boolean first = true;
+                while ((line = br.readLine()) != null) {
+                    if (line.isBlank()) continue;
+                    if (first) { header = line.trim(); first = false; }
+                    else { rows.add(line.trim()); }
+                }
             }
+
+            if (header == null) return null;
+            return "{\"header\":\"" + header + "\",\"rows\":" + rows.toString() + "}";
+
+        } catch (IOException e) {
+            e.printStackTrace();
+            return null;
         }
-        return result;
-    }
-
-    // ===================== MEASUREMENTS ======================
-
-    public static synchronized Measurement addMeasurement(Patient patient,
-                                                          Measurement.Type type,
-                                                          List<Integer> values,
-                                                          LocalDateTime date) {
-        int id = measurementIdSeq.getAndIncrement();
-        Measurement m = new Measurement(id, type, values, date, patient);
-        measurements.add(m);
-        return m;
-    }
-
-    public static List<Measurement> listMeasurementsForPatient(int patientId) {
-        List<Measurement> result = new ArrayList<>();
-        for (Measurement m : measurements) {
-            if (m.getPatient() != null && m.getPatient().getId() == patientId) {
-                result.add(m);
-            }
-        }
-        return result;
-    }
-
-    // ===================== SYMPTOMS ======================
-
-    public static synchronized Symptoms addSymptoms(Patient patient,
-                                                    String description,
-                                                    LocalDateTime date_hour) {
-        int id = symptomsIdSeq.getAndIncrement();
-        Symptoms s = new Symptoms(description, date_hour, patient);
-        s.setId(id);
-        symptomsList.add(s);
-        return s;
-    }
-
-    public static List<Symptoms> listSymptomsForPatient(int patientId) {
-        List<Symptoms> result = new ArrayList<>();
-        for (Symptoms s : symptomsList) {
-            if (s.getPatient() != null && s.getPatient().getId() == patientId) {
-                result.add(s);
-            }
-        }
-        return result;
     }
 }

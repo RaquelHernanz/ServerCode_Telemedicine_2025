@@ -5,34 +5,33 @@ import java.sql.*;
 /** Conexión con la base de datos (SQLite) */
 
 public class DatabaseManager {
-    private static final String URL = "jdbc:sqlite:telemedicina.db";
+    private static final String URL = "jdbc:sqlite:telemedicina.db"; // fichero .db en la raíz
     private static Connection conn;
 
-    /** Abre la conexión (si no estaba abierta) y crea tablas */
+    // Conecta (si no está ya conectada), activa PRAGMAs SQLite y crea tablas.
     public static void connect() {
         try {
-            if (conn == null || conn.isClosed()) { // si está cerrado
-                conn = DriverManager.getConnection(URL); // abre base de datos
+            if (conn == null || conn.isClosed()) {
+                conn = DriverManager.getConnection(URL);
                 System.out.println("[DB] Connected to SQLite");
 
-                // PRAGMAs para que SQLite sea más fiable y seguro
+                // PRAGMAs útiles para SQLite
                 try (Statement s = conn.createStatement()) {
-                    s.execute("PRAGMA foreign_keys = ON;"); // activa integridad referencial
-                    s.execute("PRAGMA journal_mode = WAL;");   // mejor rendimiento cuando hay lecturas y escrituras a la vez
-                    s.execute("PRAGMA busy_timeout = 5000;");  // 5s de espera si está bloqueada --> lock
+                    s.execute("PRAGMA foreign_keys = ON;"); // para la seguridad y fiabilidad
+                    s.execute("PRAGMA journal_mode = WAL;"); // para que rinda mejor cuando se lea y escriba a la vez
+                    s.execute("PRAGMA busy_timeout = 5000;"); // locl --> bloqueo de 5s
                 }
-
-                createTables();
+                createTables(); // crea tablas al abrir la conexión
             }
         } catch (SQLException e) {
             System.err.println("[DB] Connection error: " + e.getMessage());
         }
     }
 
-    /** Devuelve la conexión actual (si está o no activa) */
+    // Devuelve la conexión actual, si está abierta o no
     public static Connection get() { return conn; }
 
-    /** Cierra la conexión si está abierta */
+    // Cierra la conexión si está abierta
     public static void close() {
         try {
             if (conn != null && !conn.isClosed()) {
@@ -42,7 +41,7 @@ public class DatabaseManager {
         } catch (SQLException ignored) {}
     }
 
-    /** Crea el esquema mínimo al iniciar la conexión */
+    // Crea esquema mínimo (patients, symptoms, measurements)
     private static void createTables() {
         String patients = """
           CREATE TABLE IF NOT EXISTS patients(
@@ -64,24 +63,23 @@ public class DatabaseManager {
           CREATE TABLE IF NOT EXISTS measurements(
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             patient_id INTEGER,
-            type TEXT,          -- ECG/EDA
-            started_at TEXT,    -- inicio de la toma
-            file_path TEXT,     -- ruta del CSV
+            type TEXT,
+            started_at TEXT,
+            file_path TEXT,
             FOREIGN KEY(patient_id) REFERENCES patients(id) ON DELETE CASCADE
           );""";
 
-        // Índices útiles
         String idxEmail = "CREATE INDEX IF NOT EXISTS idx_patients_email ON patients(email);";
-        String idxSymptomsPid = "CREATE INDEX IF NOT EXISTS idx_symptoms_pid ON symptoms(patient_id);";
-        String idxMeasPid = "CREATE INDEX IF NOT EXISTS idx_measurements_pid ON measurements(patient_id);";
+        String idxSymPt = "CREATE INDEX IF NOT EXISTS idx_symptoms_pid ON symptoms(patient_id);";
+        String idxMeaPt = "CREATE INDEX IF NOT EXISTS idx_measurements_pid ON measurements(patient_id);";
 
         try (Statement st = conn.createStatement()) {
             st.execute(patients);
             st.execute(symptoms);
             st.execute(measurements);
             st.execute(idxEmail);
-            st.execute(idxSymptomsPid);
-            st.execute(idxMeasPid);
+            st.execute(idxSymPt);
+            st.execute(idxMeaPt);
         } catch (SQLException e) {
             System.err.println("[DB] Schema error: " + e.getMessage());
         }

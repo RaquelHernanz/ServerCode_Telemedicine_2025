@@ -1,340 +1,247 @@
 package server;
 
-import java.io.IOException;
-import java.time.LocalDate;
-import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.List;
-
-import com.google.gson.JsonArray;
-import pojos.*;
 import com.google.gson.Gson;
+import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonSyntaxException;
+import server.database.MeasurementDAO;
+import server.database.PatientDAO;
+import server.database.SymptomDAO;
 
-//Parte de los métodos siguen vacíos, antes hay que configurar al paciente y el doctor
+import java.time.LocalDateTime;
 
+/**
+ * Interpreta los mensajes JSON de los clientes (Patient/Doctor).
+ * Formato esperado: {"action":"...","requestId":"...","payload":{...}}
+ */
 public class Protocol {
 
+    // Gson para parsear y construir JSON
     private static final Gson gson = new Gson();
 
+    /**
+     * Punto de entrada: recibe una línea de texto (JSON), devuelve otra (JSON).
+     */
     public static String process(String message) {
         try {
+            // Parseamos el texto a objeto JSON (o null si estaba vacío/incorrecto)
             JsonObject req = gson.fromJson(message, JsonObject.class);
             if (req == null) {
                 return error(null, "UNKNOWN", "Empty message");
             }
 
+            // Sacamos "action" (qué quiere hacer el cliente)
             String action = req.has("action") ? req.get("action").getAsString() : null;
+            // requestId es opcional (para que el cliente correlacione la respuesta)
             String requestId = req.has("requestId") ? req.get("requestId").getAsString() : null;
 
             if (action == null) {
                 return error(requestId, "UNKNOWN", "Missing 'action' field");
             }
 
+            // Enrutamos por acción
             switch (action) {
                 case "REGISTER_PATIENT":
                     return handleRegisterPatient(req, requestId);
-                case "REGISTER_DOCTOR":
-                    return handleRegisterDoctor(req, requestId);
+
                 case "LOGIN":
                     return handleLogin(req, requestId);
+
                 case "SEND_SYMPTOMS":
                     return handleSendSymptoms(req, requestId);
+
                 case "SEND_MEASUREMENT":
                     return handleSendMeasurement(req, requestId);
+
+                // Por ahora, acciones aún no implementadas (dejamos mensaje claro)
+                case "REGISTER_DOCTOR":
                 case "REQUEST_APPOINTMENT":
-                    return handleRequestAppointment(req, requestId);
                 case "LIST_APPOINTMENTS":
-                    return handleListAppointments(req, requestId);
                 case "LIST_MEASUREMENTS":
-                    return handleListMeasurements(req, requestId);
                 case "LIST_SYMPTOMS":
-                    return handleListSymptoms(req, requestId);
                 case "LIST_DOCTORS":
-                    return handleListDoctors(req, requestId);
+                    return notImplemented(requestId, action, "Not implemented yet. Add DAO + table later.");
+
                 default:
                     return error(requestId, action, "Unknown action: " + action);
             }
 
         } catch (JsonSyntaxException e) {
+            // JSON roto
             return error(null, "UNKNOWN", "Invalid JSON: " + e.getMessage());
         } catch (Exception e) {
+            // Cualquier otra excepción
             return error(null, "UNKNOWN", "Internal error: " + e.getMessage());
         }
     }
 
+    // ------------------------- HANDLERS -------------------------
+
+    // REGISTRO de paciente -> inserta en BD y devuelve su id
     private static String handleRegisterPatient(JsonObject req, String requestId) {
-        JsonObject payload = getPayload(req);
-        // Aquí conectarías con tu lógica/DAO y tus POJOs Patient/User
-        int newPatientId = 1; // sustituir por el de la BD
+        JsonObject payload = getPayload(req); // coge payload o {}
+        // Leemos campos
+        String name     = getString(payload, "name",     "");
+        String surname  = getString(payload, "surname",  "");
+        String email    = getString(payload, "email",    "");
+        String password = getString(payload, "password", "");
+        String dob      = getString(payload, "dob",      ""); // "yyyy-MM-dd"
+        String sex      = getString(payload, "sex",      "");
+        String phone    = getString(payload, "phone",    "");
 
-        JsonObject resp = baseResponse("REGISTER_PATIENT", requestId, "OK",
-                "Patient registered successfully");
+        // Validaciones mínimas
+        if (name.isBlank() || surname.isBlank() || email.isBlank() || password.isBlank()) {
+            return error(requestId, "REGISTER_PATIENT", "Missing required fields (name, surname, email, password)");
+        }
+
+        // Insertar en BD
+        boolean ok = PatientDAO.register(name, surname, email, password, dob, sex, phone);
+        Integer patientId = ok ? PatientDAO.getIdByEmail(email) : null;
+        if (!ok || patientId == null) {
+            return error(requestId, "REGISTER_PATIENT", "Register failed (maybe duplicated email)");
+        }
+
+        // Respuesta OK con id
+        JsonObject resp = baseResponse("REGISTER_PATIENT", requestId, "OK","Patient registered successfully");
         JsonObject respPayload = new JsonObject();
-        respPayload.addProperty("patientId", newPatientId);
+        respPayload.addProperty("patientId", patientId);
         resp.add("payload", respPayload);
         return gson.toJson(resp);
     }
 
-    private static String handleRegisterDoctor(JsonObject req, String requestId) {
-        JsonObject payload = getPayload(req);
-
-        // payload debe venir con dos objetos:
-        // - user   (username/password/role)
-        // - doctor (name/surname/email/phonenumber)
-        JsonObject userJson = payload.getAsJsonObject("user");
-        JsonObject doctorJson = payload.getAsJsonObject("doctor");
-
-        String username = userJson.get("username").getAsString(); // normalmente email
-        String password = userJson.get("password").getAsString();
-        // String roleStr = userJson.get("role").getAsString(); // aquí sabes que será "DOCTOR"
-
-        // Crear el POJO Doctor a partir del JSON
-        pojos.Doctor doctor = new pojos.Doctor(
-                doctorJson.get("name").getAsString(),
-                doctorJson.get("surname").getAsString(),
-                doctorJson.get("email").getAsString(),
-                doctorJson.get("phonenumber").getAsString(),
-                new java.util.ArrayList<>(),
-                new java.util.ArrayList<>(),
-                new java.util.ArrayList<>()
-        );
-
-        int newDoctorId;
-        try {
-            // Registramos al doctor y guardamos credenciales
-            newDoctorId = DataStorage.registerDoctor(doctor, password);
-        } catch (IllegalArgumentException e) {
-            // Por ejemplo, email duplicado
-            return error(requestId, "REGISTER_DOCTOR", e.getMessage());
-        }
-
-        JsonObject resp = baseResponse("REGISTER_DOCTOR", requestId, "OK",
-                "Doctor registered successfully");
-        JsonObject respPayload = new JsonObject();
-        respPayload.addProperty("doctorId", newDoctorId);
-        resp.add("payload", respPayload);
-
-        return gson.toJson(resp);
-    }
-
-    private static String handleListDoctors(JsonObject req, String requestId) {
-        java.util.List<Doctor> doctors = DataStorage.listAllDoctors();
-
-        JsonObject resp = baseResponse("LIST_DOCTORS", requestId, "OK",
-                "Doctor list retrieved");
-
-        com.google.gson.JsonArray arr = new com.google.gson.JsonArray();
-        for (Doctor d : doctors) {
-            JsonObject dJson = new JsonObject();
-            dJson.addProperty("id", d.getId());
-            dJson.addProperty("name", d.getName());
-            dJson.addProperty("surname", d.getSurname());
-            dJson.addProperty("email", d.getEmail());
-            dJson.addProperty("phonenumber", d.getPhonenumber());
-            arr.add(dJson);
-        }
-
-        JsonObject payload = new JsonObject();
-        payload.add("doctors", arr);
-        resp.add("payload", payload);
-
-        return gson.toJson(resp);
-    }
-
-
+    // LOGIN de paciente -> valida en BD
     private static String handleLogin(JsonObject req, String requestId) {
         JsonObject payload = getPayload(req);
-        String username = payload.has("username") ? payload.get("username").getAsString() : "";
-        String password = payload.has("password") ? payload.get("password").getAsString() : "";
+        String username = getString(payload, "username", ""); // email
+        String password = getString(payload, "password", "");
 
-        User user = DataStorage.validateLogin(username, password);
-        if (user == null) {
+        if (username.isBlank() || password.isBlank()) {
+            return error(requestId, "LOGIN", "Missing username or password");
+        }
+
+        boolean valid = PatientDAO.validateLogin(username, password);
+        if (!valid) {
             return error(requestId, "LOGIN", "Invalid username or password");
         }
 
+        // Respuesta OK (rol fijo PATIENT por ahora)
         JsonObject resp = baseResponse("LOGIN", requestId, "OK", "Login successful");
         JsonObject respPayload = new JsonObject();
-
-        // De momento no tenemos userId real; puedes poner 0 o generar uno si extiendes DataStorage
-        respPayload.addProperty("userId", 0);
-        respPayload.addProperty("role", user.getRole().name());
+        Integer pid = PatientDAO.getIdByEmail(username);
+        respPayload.addProperty("userId", pid != null ? pid : 0);
+        respPayload.addProperty("role", "PATIENT");
         respPayload.addProperty("token", "session-" + username);
-
         resp.add("payload", respPayload);
         return gson.toJson(resp);
     }
 
-
+    // SÍNTOMAS -> inserta en tabla symptoms
     private static String handleSendSymptoms(JsonObject req, String requestId) {
         JsonObject payload = getPayload(req);
+        int patientId      = getInt(payload, "patientId", -1);
+        String description = getString(payload, "description", "");
+        String hourStr     = getString(payload, "hour", ""); // opcional (ISO-8601)
 
-        int patientId = payload.get("patientId").getAsInt();
-        String description = payload.get("description").getAsString();
-        String hourStr = payload.get("hour").getAsString();   // "2025-11-09T10:30:00"
-
-        Patient p = DataStorage.getPatientById(patientId);
-        if (p == null) {
-            return error(requestId, "SEND_SYMPTOMS", "Patient not found");
+        if (patientId <= 0 || description.isBlank()) {
+            return error(requestId, "SEND_SYMPTOMS", "Missing patientId or description");
         }
-        LocalDateTime date_hour = LocalDateTime.parse(hourStr);
 
-        Symptoms s = DataStorage.addSymptoms(p, description, date_hour);
+        // Validación blanda de fecha (si viene y está mal, ignoramos y usamos now() en el DAO)
+        if (!hourStr.isBlank()) {
+            try { LocalDateTime.parse(hourStr); } catch (Exception ignored) {}
+        }
 
-        JsonObject resp = baseResponse("SEND_SYMPTOMS", requestId, "OK",
-                "Symptoms stored");
+        boolean ok = SymptomDAO.insertSymptom(patientId, description); // timestamp se pone en el DAO (now())
+        if (!ok) {
+            return error(requestId, "SEND_SYMPTOMS", "DB error while inserting symptom");
+        }
+
+        JsonObject resp = baseResponse("SEND_SYMPTOMS", requestId, "OK","Symptoms stored");
         JsonObject respPayload = new JsonObject();
-        respPayload.addProperty("symptomsId", s.getId());
+        respPayload.addProperty("symptomsId", -1); // placeholder
         resp.add("payload", respPayload);
-
         return gson.toJson(resp);
     }
 
-    // En el switch:
-// case "SEND_MEASUREMENT":
-//     return handleSendMeasurement(request, requestId);
-
+    // MEDICIÓN -> guarda CSV + metadatos en BD
     private static String handleSendMeasurement(JsonObject req, String requestId) {
         JsonObject payload = getPayload(req);
+        int patientId       = getInt(payload, "patientId", -1);
+        String typeStr      = getString(payload, "type", "");
+        String dateStr      = getString(payload, "date", ""); // ISO-8601 de inicio
+        JsonArray valuesArr = payload.has("values") && payload.get("values").isJsonArray()
+                ? payload.getAsJsonArray("values") : new JsonArray();
 
-        int patientId = payload.get("patientId").getAsInt();
-        String typeStr = payload.get("type").getAsString();
-        String dateStr = payload.get("date").getAsString();
-
-        JsonArray valuesJson = payload.getAsJsonArray("values");
-        List<Integer> values = new ArrayList<>();
-        for (int i = 0; i < valuesJson.size(); i++) {
-            values.add(valuesJson.get(i).getAsInt());
+        if (patientId <= 0 || typeStr.isBlank() || dateStr.isBlank() || valuesArr.size() == 0) {
+            return error(requestId, "SEND_MEASUREMENT", "Missing patientId/type/date/values");
         }
 
-        Patient p = DataStorage.getPatientById(patientId);
-        if (p == null) {
-            return error(requestId, "SEND_MEASUREMENT", "Patient not found");
+        // Convertimos valores a filas CSV (timestamp sintético: índice; valor; '-')
+        JsonArray rows = new JsonArray();
+        for (int i = 0; i < valuesArr.size(); i++) {
+            String line = i + "," + valuesArr.get(i).getAsInt() + ",-"; // "0,523,-"
+            rows.add(line);
         }
 
-        LocalDateTime date = LocalDateTime.parse(dateStr);
-        Measurement.Type type = Measurement.Type.valueOf(typeStr);
-
-        Measurement m = DataStorage.addMeasurement(p, type, values, date);
-
-        JsonObject resp = baseResponse("SEND_MEASUREMENT", requestId, "OK",
-                "Measurement stored");
-        JsonObject respPayload = new JsonObject();
-        respPayload.addProperty("measurementId", m.getId());
-        resp.add("payload", respPayload);
-
-        return gson.toJson(resp);
-    }
-
-
-    private static String handleRequestAppointment(JsonObject req, String requestId) {
-        JsonObject payload = getPayload(req);
-
-        int patientId = payload.get("patientId").getAsInt();
-        int doctorId = payload.get("doctorId").getAsInt();
-        String dateStr = payload.get("date").getAsString();
-        String message = payload.get("message").getAsString();
-
-        Patient p = DataStorage.getPatientById(patientId);
-        Doctor d = DataStorage.getDoctorById(doctorId);
-        if (p == null || d == null) {
-            return error(requestId, "REQUEST_APPOINTMENT", "Patient or doctor not found");
+        // Guardamos CSV en carpeta por id: data/patient_<id>/signals_yyyy-MM-dd.csv
+        String folder = "patient_" + patientId;
+        String filePath = DataStorage.appendRowsToCsv(folder, rows);
+        if (filePath == null) {
+            return error(requestId, "SEND_MEASUREMENT", "CSV write failed");
         }
 
-        LocalDateTime date = LocalDateTime.parse(dateStr);
+        // Guardar metadatos de la toma en BD
+        boolean ok = MeasurementDAO.insertMeta(patientId, typeStr, dateStr, filePath);
+        if (!ok) {
+            return error(requestId, "SEND_MEASUREMENT", "DB insert failed (measurement meta)");
+        }
 
-        Appointment appt = DataStorage.addAppointment(p, d, date, message);
-
-        JsonObject resp = baseResponse("REQUEST_APPOINTMENT", requestId, "OK",
-                "Appointment created");
+        JsonObject resp = baseResponse("SEND_MEASUREMENT", requestId, "OK","Measurement stored");
         JsonObject respPayload = new JsonObject();
-        respPayload.addProperty("appointmentId", appt.getId());
-        resp.add("payload", respPayload);
-
-        return gson.toJson(resp);
-    }
-
-    private static String handleListAppointments(JsonObject req, String requestId) {
-        JsonObject payload = getPayload(req);
-        JsonObject resp = baseResponse("LIST_APPOINTMENTS", requestId, "OK",
-                "Appointments retrieved");
-        JsonObject respPayload = new JsonObject();
-        respPayload.add("appointments", gson.toJsonTree(new Object[0]));
+        respPayload.addProperty("measurementId", -1); // placeholder
         resp.add("payload", respPayload);
         return gson.toJson(resp);
     }
 
-    private static String handleListMeasurements(JsonObject req, String requestId) {
-        JsonObject payload = getPayload(req);
-        JsonObject resp = baseResponse("LIST_MEASUREMENTS", requestId, "OK",
-                "Measurements retrieved");
-        JsonObject respPayload = new JsonObject();
-        respPayload.add("measurements", gson.toJsonTree(new Object[0]));
-        resp.add("payload", respPayload);
-        return gson.toJson(resp);
-    }
+    // ------------------------- HELPERS JSON -------------------------
 
-    private static String handleListSymptoms(JsonObject req, String requestId) {
-        JsonObject payload = getPayload(req);
-        JsonObject resp = baseResponse("LIST_SYMPTOMS", requestId, "OK",
-                "Symptoms retrieved");
-        JsonObject respPayload = new JsonObject();
-        respPayload.add("symptoms", gson.toJsonTree(new Object[0]));
-        resp.add("payload", respPayload);
-        return gson.toJson(resp);
-    }
-
-    // ========= Helpers =========
-
+    // payload seguro ({} si no existe)
     private static JsonObject getPayload(JsonObject req) {
         return req.has("payload") && req.get("payload").isJsonObject()
                 ? req.getAsJsonObject("payload")
                 : new JsonObject();
     }
 
-    private static JsonObject baseResponse(String action, String requestId,
-                                           String status, String msg) {
+    // respuesta estándar base
+    private static JsonObject baseResponse(String action, String requestId, String status, String msg) {
         JsonObject resp = new JsonObject();
         resp.addProperty("type", "RESPONSE");
         resp.addProperty("action", action);
         if (requestId != null) resp.addProperty("requestId", requestId);
-        resp.addProperty("status", status);   // OK / ERROR
+        resp.addProperty("status", status);
         resp.addProperty("message", msg);
         return resp;
     }
 
+    // error uniforme
     private static String error(String requestId, String action, String msg) {
-        JsonObject resp = baseResponse(
-                action != null ? action : "UNKNOWN",
-                requestId,
-                "ERROR",
-                msg
-        );
+        JsonObject resp = baseResponse(action != null ? action : "UNKNOWN", requestId, "ERROR", msg);
         resp.add("payload", new JsonObject());
         return gson.toJson(resp);
     }
 
-    private static String handleSendMessage(JsonObject req, String requestId) {
-        JsonObject payload = getPayload(req);
-
-        int fromDoctorId = payload.get("fromDoctorId").getAsInt();
-        int toPatientId  = payload.get("toPatientId").getAsInt();
-        String content   = payload.get("content").getAsString();
-        String timestamp = payload.get("timestamp").getAsString();
-
-        // Aquí se guardará el mensaje en la BD, notificar al paciente, etc.
-        int messageId = 5001; // ID generado por la BD
-
-        JsonObject resp = baseResponse("SEND_MESSAGE", requestId, "OK", "Message delivered");
-        JsonObject respPayload = new JsonObject();
-        respPayload.addProperty("messageId", messageId);
-        resp.add("payload", respPayload);
-
+    // “no implementado” uniforme
+    private static String notImplemented(String requestId, String action, String msg) {
+        JsonObject resp = baseResponse(action, requestId, "ERROR", msg);
+        resp.add("payload", new JsonObject());
         return gson.toJson(resp);
     }
 
+    // lecturas seguras de JSON
+    private static String getString(JsonObject obj, String key, String def) {
+        return obj.has(key) && !obj.get(key).isJsonNull() ? obj.get(key).getAsString() : def;
+    }
+    private static int getInt(JsonObject obj, String key, int def) {
+        return obj.has(key) && !obj.get(key).isJsonNull() ? obj.get(key).getAsInt() : def;
+    }
 }
-
-
-
