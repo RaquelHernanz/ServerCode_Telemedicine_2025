@@ -1,20 +1,23 @@
 package server;
 
-import com.google.gson.Gson;
-import com.google.gson.JsonArray;
-import com.google.gson.JsonObject;
-import com.google.gson.JsonSyntaxException;
+import com.google.gson.*;
+import pojos.Doctor;
+import pojos.Patient;
+import pojos.Symptoms;
 import server.database.MeasurementDAO;
 import server.database.PatientDAO;
 import server.database.SymptomDAO;
+import server.database.DoctorDAO;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 /**
  * Interpreta los mensajes JSON de los clientes (Patient/Doctor).
  * Formato esperado: {"action":"...","requestId":"...","payload":{...}}
  */
-public class Protocol {
+public class
+Protocol {
 
     // Gson para parsear y construir JSON
     private static final Gson gson = new Gson();
@@ -43,6 +46,8 @@ public class Protocol {
             switch (action) {
                 case "REGISTER_PATIENT":
                     return handleRegisterPatient(req, requestId);
+                case "REGISTER_DOCTOR":
+                    return handleRegisterDoctor(req, requestId);
 
                 case "LOGIN":
                     return handleLogin(req, requestId);
@@ -53,15 +58,16 @@ public class Protocol {
                 case "SEND_MEASUREMENT":
                     return handleSendMeasurement(req, requestId);
 
-                // Por ahora, acciones aún no implementadas (dejamos mensaje claro)
-                case "REGISTER_DOCTOR":
+                case "LIST_PATIENTS":
+                    return handleListPatients(req, requestId);
+
                 case "REQUEST_APPOINTMENT":
                 case "LIST_APPOINTMENTS":
                 case "LIST_MEASUREMENTS":
                 case "LIST_SYMPTOMS":
+                    return handleListSymptoms(req, requestId);
                 case "LIST_DOCTORS":
-                    return notImplemented(requestId, action, "Not implemented yet. Add DAO + table later.");
-
+                    return handleListDoctors(req, requestId);
                 default:
                     return error(requestId, action, "Unknown action: " + action);
             }
@@ -109,7 +115,51 @@ public class Protocol {
         return gson.toJson(resp);
     }
 
-    // LOGIN de paciente -> valida en BD
+
+
+    //REGISTRO de doctor -> inserta en BD y devuelve su id
+    private static String handleRegisterDoctor(JsonObject req, String requestId) {
+        JsonObject payload = getPayload(req);
+
+        // Obtenemos los campos del JSON payload
+        String name     = getString(payload, "name",     "");
+        String surname  = getString(payload, "surname",  "");
+        String email    = getString(payload, "email",    "");
+        // Asumimos que la contraseña ya está hasheada por el cliente o la manejaremos en el DAO
+        String password = getString(payload, "password", "");
+        String phone    = getString(payload, "phone",    "");
+
+        // Validación básica de campos
+        if (name.isBlank() || surname.isBlank() || email.isBlank() || password.isBlank()) {
+            return error(requestId, "REGISTER_DOCTOR", "Missing required fields (name, surname, email, password)");
+        }
+
+        // Llama a DoctorDAO para insertar
+        boolean ok = DoctorDAO.register(name, surname, email, password, phone);
+
+        if (!ok) {
+            return error(requestId, "REGISTER_DOCTOR", "Register failed (maybe duplicated email)");
+        }
+
+        // Buscamos el ID para devolverlo al cliente
+        Integer doctorId = DoctorDAO.getIdByEmail(email);
+        if (doctorId == null) {
+            return error(requestId, "REGISTER_DOCTOR", "Doctor registered but ID not found. Internal error.");
+        }
+
+        // Construcción de la respuesta OK
+        JsonObject resp = baseResponse("REGISTER_DOCTOR", requestId, "OK","Doctor registered successfully");
+        JsonObject respPayload = new JsonObject();
+        respPayload.addProperty("doctorId", doctorId); // Devolvemos el ID
+        resp.add("payload", respPayload);
+        return gson.toJson(resp);
+    }
+
+    // Archivo: Protocol.java (REEMPLAZAR el método handleLogin actual)
+
+    /**
+     * LOGIN -> valida credenciales del usuario y diferencia el rol (Patient o Doctor)
+     */
     private static String handleLogin(JsonObject req, String requestId) {
         JsonObject payload = getPayload(req);
         String username = getString(payload, "username", ""); // email
@@ -119,20 +169,36 @@ public class Protocol {
             return error(requestId, "LOGIN", "Missing username or password");
         }
 
-        boolean valid = PatientDAO.validateLogin(username, password);
-        if (!valid) {
-            return error(requestId, "LOGIN", "Invalid username or password");
+        // --- 1. INTENTO DE VALIDACIÓN COMO PACIENTE ---
+        if (PatientDAO.validateLogin(username, password)) {
+            // Login exitoso como PACIENTE
+            JsonObject resp = baseResponse("LOGIN", requestId, "OK", "Login successful (Patient)");
+            JsonObject respPayload = new JsonObject();
+            Integer pid = PatientDAO.getIdByEmail(username);
+
+            respPayload.addProperty("userId", pid != null ? pid : 0);
+            respPayload.addProperty("role", "PATIENT"); // <-- ROL
+            respPayload.addProperty("token", "session-" + username);
+            resp.add("payload", respPayload);
+            return gson.toJson(resp);
         }
 
-        // Respuesta OK (rol fijo PATIENT por ahora)
-        JsonObject resp = baseResponse("LOGIN", requestId, "OK", "Login successful");
-        JsonObject respPayload = new JsonObject();
-        Integer pid = PatientDAO.getIdByEmail(username);
-        respPayload.addProperty("userId", pid != null ? pid : 0);
-        respPayload.addProperty("role", "PATIENT");
-        respPayload.addProperty("token", "session-" + username);
-        resp.add("payload", respPayload);
-        return gson.toJson(resp);
+        // --- 2. INTENTO DE VALIDACIÓN COMO DOCTOR ---
+        if (DoctorDAO.validateLogin(username, password)) {
+            // Login exitoso como DOCTOR
+            JsonObject resp = baseResponse("LOGIN", requestId, "OK", "Login successful (Doctor)");
+            JsonObject respPayload = new JsonObject();
+            Integer did = DoctorDAO.getIdByEmail(username);
+
+            respPayload.addProperty("userId", did != null ? did : 0);
+            respPayload.addProperty("role", "DOCTOR"); // <-- ROL
+            respPayload.addProperty("token", "session-" + username);
+            resp.add("payload", respPayload);
+            return gson.toJson(resp);
+        }
+
+        //  3. FALLO TOTAL
+        return error(requestId, "LOGIN", "Invalid username or password");
     }
 
     // SÍNTOMAS -> inserta en tabla symptoms
@@ -200,6 +266,83 @@ public class Protocol {
         JsonObject respPayload = new JsonObject();
         respPayload.addProperty("measurementId", -1); // placeholder
         resp.add("payload", respPayload);
+        return gson.toJson(resp);
+    }
+
+    //LIST_PATIENTS -> Lista los pacientes asociados a un doctor que ha iniciado sesión.
+    private static String handleListPatients(JsonObject req, String requestId) {
+        JsonObject payload = getPayload(req);
+        // El doctor cliente debe enviar su ID (userId) en el payload.
+        int doctorId = getInt(payload, "userId", -1);
+
+        if (doctorId <= 0) {
+            return error(requestId, "LIST_PATIENTS", "Missing or invalid userId (doctorId) in request.");
+        }
+
+        // CRUCIAL: Llama al DAO para obtener la lista de objetos Patient que acabas de implementar.
+        List<Patient> patients = DoctorDAO.getPatientsByDoctorId(doctorId);
+
+        // Convertimos la lista de objetos Java (Patient) en un array JSON.
+        // Gson se encarga de convertir cada objeto Patient a su formato JSON.
+        JsonElement patientsJson = gson.toJsonTree(patients);
+
+        // Construcción de la respuesta OK
+        JsonObject resp = baseResponse("LIST_PATIENTS", requestId, "OK", "Patients retrieved successfully");
+        JsonObject respPayload = new JsonObject();
+
+        // Añadimos el array de pacientes al payload de la respuesta
+        respPayload.add("patients", patientsJson);
+        resp.add("payload", respPayload);
+
+        return gson.toJson(resp);
+    }
+
+    //LIST_SYMPTOMS -> Devuelve todos los síntomas de un paciente específico.
+
+    private static String handleListSymptoms(JsonObject req, String requestId) {
+        JsonObject payload = getPayload(req);
+        int patientId = getInt(payload, "patientId", -1);
+
+        if (patientId <= 0) {
+            return error(requestId, "LIST_SYMPTOMS", "Missing or invalid patientId.");
+        }
+
+        // Llama al DAO para obtener la lista de objetos Symptoms.
+        // NOTA: Asumiendo que SymptomDAO tiene este método de consulta.
+        List<Symptoms> symptoms = SymptomDAO.getSymptomsByPatientId(patientId);
+
+        JsonElement symptomsJson = gson.toJsonTree(symptoms);
+
+        JsonObject resp = baseResponse("LIST_SYMPTOMS", requestId, "OK", "Symptoms retrieved");
+        JsonObject respPayload = new JsonObject();
+        respPayload.add("symptoms", symptomsJson);
+        resp.add("payload", respPayload);
+
+        return gson.toJson(resp);
+    }
+
+    // Archivo: Protocol.java (Añadir este nuevo método)
+
+    /**
+     * LIST_DOCTORS -> Devuelve una lista de todos los doctores registrados.
+     */
+    private static String handleListDoctors(JsonObject req, String requestId) {
+        // No necesitamos datos de entrada, solo llamamos al DAO
+
+        // 1. Obtiene la lista de objetos Doctor del DAO.
+        List<Doctor> doctors = DoctorDAO.getAllDoctors();
+
+        // 2. Convierte la lista de objetos Java (Doctor) en un array JSON.
+        JsonElement doctorsJson = gson.toJsonTree(doctors);
+
+        // 3. Construcción de la respuesta OK
+        JsonObject resp = baseResponse("LIST_DOCTORS", requestId, "OK", "Doctors retrieved successfully");
+        JsonObject respPayload = new JsonObject();
+
+        // Añadimos el array de doctores al payload de la respuesta
+        respPayload.add("doctors", doctorsJson);
+        resp.add("payload", respPayload);
+
         return gson.toJson(resp);
     }
 

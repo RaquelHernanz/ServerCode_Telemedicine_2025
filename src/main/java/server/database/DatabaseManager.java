@@ -47,7 +47,9 @@ public class DatabaseManager {
           CREATE TABLE IF NOT EXISTS patients(
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             name TEXT, surname TEXT, email TEXT UNIQUE,
-            password TEXT, dob TEXT, sex TEXT, phone TEXT
+            password TEXT, dob TEXT, sex TEXT, phone TEXT,
+            doctor_id INTEGER,  
+            FOREIGN KEY(doctor_id) REFERENCES doctors(id) ON DELETE SET NULL
           );""";
 
         String symptoms = """
@@ -69,17 +71,29 @@ public class DatabaseManager {
             FOREIGN KEY(patient_id) REFERENCES patients(id) ON DELETE CASCADE
           );""";
 
+        String doctors = """
+          CREATE TABLE IF NOT EXISTS doctors(
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT, surname TEXT TEXT, email TEXT UNIQUE,
+            password TEXT, phone TEXT
+            );""";
+
+
+
         String idxEmail = "CREATE INDEX IF NOT EXISTS idx_patients_email ON patients(email);";
         String idxSymPt = "CREATE INDEX IF NOT EXISTS idx_symptoms_pid ON symptoms(patient_id);";
         String idxMeaPt = "CREATE INDEX IF NOT EXISTS idx_measurements_pid ON measurements(patient_id);";
+        String idxDoctorEmail = "CREATE INDEX IF NOT EXISTS idx_doctors_email ON doctors(email);";
 
         try (Statement st = conn.createStatement()) {
             st.execute(patients);
             st.execute(symptoms);
             st.execute(measurements);
+            st.execute(doctors);
             st.execute(idxEmail);
             st.execute(idxSymPt);
             st.execute(idxMeaPt);
+            st.execute(idxDoctorEmail);
         } catch (SQLException e) {
             System.err.println("[DB] Schema error: " + e.getMessage());
         }
