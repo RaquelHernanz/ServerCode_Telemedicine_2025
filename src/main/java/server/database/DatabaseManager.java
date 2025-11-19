@@ -74,26 +74,63 @@ public class DatabaseManager {
         String doctors = """
           CREATE TABLE IF NOT EXISTS doctors(
             id INTEGER PRIMARY KEY AUTOINCREMENT,
-            name TEXT, surname TEXT TEXT, email TEXT UNIQUE,
+            name TEXT, surname TEXT, email TEXT UNIQUE,
             password TEXT, phone TEXT
             );""";
 
+        // NUEVA TABLA DE CITAS
+        String appointments = """
+      CREATE TABLE IF NOT EXISTS appointments(
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        doctor_id INTEGER NOT NULL,
+        patient_id INTEGER NOT NULL,
+        datetime TEXT NOT NULL,
+        message TEXT,
+        FOREIGN KEY(doctor_id) REFERENCES doctors(id) ON DELETE CASCADE,
+        FOREIGN KEY(patient_id) REFERENCES patients(id) ON DELETE CASCADE
+      );""";
 
+        String messages = """
+    CREATE TABLE IF NOT EXISTS messages(
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    doctor_id INTEGER NOT NULL,
+    patient_id INTEGER NOT NULL,
+    sender_role TEXT NOT NULL, -- 'DOCTOR' o 'PATIENT'
+    timestamp TEXT NOT NULL,
+    text TEXT NOT NULL,
+    FOREIGN KEY(doctor_id) REFERENCES doctors(id) ON DELETE CASCADE,
+    FOREIGN KEY(patient_id) REFERENCES patients(id) ON DELETE CASCADE
+  );""";
 
         String idxEmail = "CREATE INDEX IF NOT EXISTS idx_patients_email ON patients(email);";
         String idxSymPt = "CREATE INDEX IF NOT EXISTS idx_symptoms_pid ON symptoms(patient_id);";
         String idxMeaPt = "CREATE INDEX IF NOT EXISTS idx_measurements_pid ON measurements(patient_id);";
         String idxDoctorEmail = "CREATE INDEX IF NOT EXISTS idx_doctors_email ON doctors(email);";
+        String idxAppDoctor   = "CREATE INDEX IF NOT EXISTS idx_appointments_did ON appointments(doctor_id);";
+        String idxAppPatient  = "CREATE INDEX IF NOT EXISTS idx_appointments_pid ON appointments(patient_id);";
+        String idxMsgDoctor  = "CREATE INDEX IF NOT EXISTS idx_messages_did ON messages(doctor_id);";
+        String idxMsgPatient = "CREATE INDEX IF NOT EXISTS idx_messages_pid ON messages(patient_id);";
+        String idxMsgTime    = "CREATE INDEX IF NOT EXISTS idx_messages_ts  ON messages(timestamp);";
 
         try (Statement st = conn.createStatement()) {
+            //Create tables
             st.execute(patients);
             st.execute(symptoms);
             st.execute(measurements);
             st.execute(doctors);
+            st.execute(appointments);
+            st.execute(messages);
+            //Create indexes
             st.execute(idxEmail);
             st.execute(idxSymPt);
             st.execute(idxMeaPt);
             st.execute(idxDoctorEmail);
+            st.execute(idxAppDoctor);
+            st.execute(idxAppPatient);
+            st.execute(idxMsgDoctor);
+            st.execute(idxMsgPatient);
+            st.execute(idxMsgTime);
+
         } catch (SQLException e) {
             System.err.println("[DB] Schema error: " + e.getMessage());
         }

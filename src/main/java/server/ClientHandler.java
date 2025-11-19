@@ -28,7 +28,7 @@ public class ClientHandler implements Runnable { // cada cliente conectado tiene
 
             // lee cada mensaje del cliente
             while ((message = bufferedReader.readLine()) != null) { // si hay algo escrito
-                System.out.println("[Server] Received: " + message); // imprime lo que recibe el server
+                System.out.println("[Server] [IN] Received: " + message); // imprime lo que recibe el server
 
                 // Procesa el mensaje con la clase Protocol
                 String response = Protocol.process(message);
@@ -36,7 +36,7 @@ public class ClientHandler implements Runnable { // cada cliente conectado tiene
                 // Envía la respuesta de vuelta al cliente
                 if (response != null) {
                     printWriter.println(response); // se lo envia al cliente porque printWriter es el canal de salida del socket
-                    System.out.println("[Server] Replied : " + response);
+                    System.out.println("[Server] [OUT] Replied : " + response);
                 }
             }
 
@@ -46,6 +46,7 @@ public class ClientHandler implements Runnable { // cada cliente conectado tiene
             try {
                 socket.close(); // cierra el socket del cliente
             } catch (IOException ignored) {} // si hay algún error al cerrar lo ignora porque ya estamos saliendo del socket
+            System.out.printf("[Server] Connection closed for %s%n",socket.getRemoteSocketAddress());
         }
     }
 }

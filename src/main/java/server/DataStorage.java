@@ -101,4 +101,40 @@ public class DataStorage {
             return null;
         }
     }
+
+    /**
+     * Lee un CSV cualquiera (por ruta absoluta o relativa) y devuelve:
+     * {"header":"timestamp,ecg,eda","rows":["...","..."]}
+     */
+    public static synchronized String loadCsvAsJson(String filePath) {
+        try {
+            Path file = Paths.get(filePath);
+            if (!Files.exists(file)) return null;
+
+            String header = null;
+            JsonArray rows = new JsonArray();
+
+            try (BufferedReader br = Files.newBufferedReader(file, StandardCharsets.UTF_8)) {
+                String line;
+                boolean first = true;
+                while ((line = br.readLine()) != null) {
+                    if (line.isBlank()) continue;
+                    if (first) {
+                        header = line.trim();
+                        first = false;
+                    } else {
+                        rows.add(line.trim());
+                    }
+                }
+            }
+
+            if (header == null) return null;
+            return "{\"header\":\"" + header + "\",\"rows\":" + rows.toString() + "}";
+
+        } catch (IOException e) {
+            e.printStackTrace();
+            return null;
+        }
+    }
+
 }

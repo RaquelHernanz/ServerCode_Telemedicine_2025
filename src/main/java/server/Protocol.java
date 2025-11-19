@@ -1,13 +1,9 @@
 package server;
 
 import com.google.gson.*;
-import pojos.Doctor;
-import pojos.Patient;
-import pojos.Symptoms;
-import server.database.MeasurementDAO;
-import server.database.PatientDAO;
-import server.database.SymptomDAO;
-import server.database.DoctorDAO;
+import pojos.*;
+import server.database.*;
+import utilities.Encryption;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -48,26 +44,28 @@ Protocol {
                     return handleRegisterPatient(req, requestId);
                 case "REGISTER_DOCTOR":
                     return handleRegisterDoctor(req, requestId);
-
                 case "LOGIN":
                     return handleLogin(req, requestId);
-
                 case "SEND_SYMPTOMS":
                     return handleSendSymptoms(req, requestId);
-
                 case "SEND_MEASUREMENT":
                     return handleSendMeasurement(req, requestId);
-
                 case "LIST_PATIENTS":
                     return handleListPatients(req, requestId);
-
                 case "REQUEST_APPOINTMENT":
+                    return handleRequestAppointment(req, requestId);
                 case "LIST_APPOINTMENTS":
+                    return handleListAppointments(req, requestId);
                 case "LIST_MEASUREMENTS":
+                    return handleListMeasurements(req, requestId);
                 case "LIST_SYMPTOMS":
                     return handleListSymptoms(req, requestId);
                 case "LIST_DOCTORS":
                     return handleListDoctors(req, requestId);
+                case "SEND_MESSAGE":
+                    return handleSendMessage(req, requestId);
+                case "LIST_MESSAGES":
+                    return handleListMessages(req, requestId);
                 default:
                     return error(requestId, action, "Unknown action: " + action);
             }
@@ -100,8 +98,10 @@ Protocol {
             return error(requestId, "REGISTER_PATIENT", "Missing required fields (name, surname, email, password)");
         }
 
+        String passwordHash = Encryption.encryptPassword(password);
+
         // Insertar en BD
-        boolean ok = PatientDAO.register(name, surname, email, password, dob, sex, phone);
+        boolean ok = PatientDAO.register(name, surname, email, passwordHash, dob, sex, phone);
         Integer patientId = ok ? PatientDAO.getIdByEmail(email) : null;
         if (!ok || patientId == null) {
             return error(requestId, "REGISTER_PATIENT", "Register failed (maybe duplicated email)");
@@ -134,8 +134,10 @@ Protocol {
             return error(requestId, "REGISTER_DOCTOR", "Missing required fields (name, surname, email, password)");
         }
 
+        String passwordHash = Encryption.encryptPassword(password);
+
         // Llama a DoctorDAO para insertar
-        boolean ok = DoctorDAO.register(name, surname, email, password, phone);
+        boolean ok = DoctorDAO.register(name, surname, email, passwordHash, phone);
 
         if (!ok) {
             return error(requestId, "REGISTER_DOCTOR", "Register failed (maybe duplicated email)");
@@ -169,8 +171,10 @@ Protocol {
             return error(requestId, "LOGIN", "Missing username or password");
         }
 
+        String passwordHash = Encryption.encryptPassword(password);
+
         // --- 1. INTENTO DE VALIDACIÓN COMO PACIENTE ---
-        if (PatientDAO.validateLogin(username, password)) {
+        if (PatientDAO.validateLogin(username, passwordHash)) {
             // Login exitoso como PACIENTE
             JsonObject resp = baseResponse("LOGIN", requestId, "OK", "Login successful (Patient)");
             JsonObject respPayload = new JsonObject();
@@ -184,7 +188,7 @@ Protocol {
         }
 
         // --- 2. INTENTO DE VALIDACIÓN COMO DOCTOR ---
-        if (DoctorDAO.validateLogin(username, password)) {
+        if (DoctorDAO.validateLogin(username, passwordHash)) {
             // Login exitoso como DOCTOR
             JsonObject resp = baseResponse("LOGIN", requestId, "OK", "Login successful (Doctor)");
             JsonObject respPayload = new JsonObject();
@@ -273,7 +277,7 @@ Protocol {
     private static String handleListPatients(JsonObject req, String requestId) {
         JsonObject payload = getPayload(req);
         // El doctor cliente debe enviar su ID (userId) en el payload.
-        int doctorId = getInt(payload, "userId", -1);
+        int doctorId = getInt(payload, "doctorId", -1);
 
         if (doctorId <= 0) {
             return error(requestId, "LIST_PATIENTS", "Missing or invalid userId (doctorId) in request.");
@@ -307,15 +311,21 @@ Protocol {
             return error(requestId, "LIST_SYMPTOMS", "Missing or invalid patientId.");
         }
 
-        // Llama al DAO para obtener la lista de objetos Symptoms.
-        // NOTA: Asumiendo que SymptomDAO tiene este método de consulta.
         List<Symptoms> symptoms = SymptomDAO.getSymptomsByPatientId(patientId);
 
-        JsonElement symptomsJson = gson.toJsonTree(symptoms);
+        JsonArray arr = new JsonArray();
+
+        for (Symptoms s : symptoms) {
+            JsonObject jo = new JsonObject();
+            jo.addProperty("symptomsId", s.getId());
+            jo.addProperty("description", s.getDescription());
+            jo.addProperty("timestamp", s.getDateTime().toString()); // 🔥 convertir a String
+            arr.add(jo);
+        }
 
         JsonObject resp = baseResponse("LIST_SYMPTOMS", requestId, "OK", "Symptoms retrieved");
         JsonObject respPayload = new JsonObject();
-        respPayload.add("symptoms", symptomsJson);
+        respPayload.add("symptoms", arr);
         resp.add("payload", respPayload);
 
         return gson.toJson(resp);
@@ -332,15 +342,238 @@ Protocol {
         // 1. Obtiene la lista de objetos Doctor del DAO.
         List<Doctor> doctors = DoctorDAO.getAllDoctors();
 
+        /*
         // 2. Convierte la lista de objetos Java (Doctor) en un array JSON.
         JsonElement doctorsJson = gson.toJsonTree(doctors);
+         */
+
+        JsonArray arr = new JsonArray();
+        for (Doctor d : doctors) {
+            JsonObject jo = new JsonObject();
+            jo.addProperty("doctorId", d.getId());
+            jo.addProperty("name", d.getName());
+            jo.addProperty("surname", d.getSurname());
+            jo.addProperty("email", d.getEmail());
+            arr.add(jo);
+        }
 
         // 3. Construcción de la respuesta OK
         JsonObject resp = baseResponse("LIST_DOCTORS", requestId, "OK", "Doctors retrieved successfully");
         JsonObject respPayload = new JsonObject();
 
         // Añadimos el array de doctores al payload de la respuesta
-        respPayload.add("doctors", doctorsJson);
+        respPayload.add("doctors",arr);
+        resp.add("payload", respPayload);
+
+        return gson.toJson(resp);
+    }
+
+    // LIST_MEASUREMENTS -> Lista las mediciones asociadas a un paciente.
+    private static String handleListMeasurements(JsonObject req, String requestId) {
+        JsonObject payload = getPayload(req);
+        int patientId = getInt(payload, "patientId", -1);
+
+        if (patientId <= 0) {
+            return error(requestId, "LIST_MEASUREMENTS", "Missing or invalid patientId.");
+        }
+
+        // Llama al DAO para obtener la lista de metadatos de medición
+        java.util.List<server.database.MeasurementDAO.MeasurementMeta> measurements =
+                server.database.MeasurementDAO.listByPatientId(patientId);
+
+        // Convertimos a JSON sencillo
+        JsonArray arr = new JsonArray();
+        for (server.database.MeasurementDAO.MeasurementMeta m : measurements) {
+            JsonObject jo = new JsonObject();
+            jo.addProperty("id", m.getId());
+            jo.addProperty("type", m.getType());
+            jo.addProperty("date", m.getStartedAt());
+            jo.addProperty("filePath", m.getFilePath());
+            arr.add(jo);
+        }
+
+        JsonObject resp = baseResponse("LIST_MEASUREMENTS", requestId, "OK", "Measurements retrieved");
+        JsonObject respPayload = new JsonObject();
+        respPayload.add("measurements", arr);
+        resp.add("payload", respPayload);
+
+        return gson.toJson(resp);
+    }
+
+    /**
+     * REQUEST_APPOINTMENT
+     * Espera un payload así:
+     * {
+     *   "doctorId": 1,
+     *   "patientId": 5,
+     *   "datetime": "2025-11-20T10:30:00",
+     *   "message": "Dolor en el pecho desde hace dos días"
+     * }
+     */
+
+    private static String handleRequestAppointment(JsonObject req, String requestId) {
+        JsonObject payload = getPayload(req);
+
+        int doctorId  = getInt(payload, "doctorId",  -1);
+        int patientId = getInt(payload, "patientId", -1);
+        String datetime = getString(payload, "datetime", null);
+        String message  = getString(payload, "message", "");
+
+        if (doctorId <= 0 || patientId <= 0 || datetime == null || datetime.isBlank()) {
+            return error(requestId, "REQUEST_APPOINTMENT",
+                    "Missing or invalid doctorId / patientId / datetime");
+        }
+
+        Integer appId = AppointmentDAO.insert(doctorId, patientId, datetime, message);
+        if (appId == null) {
+            return error(requestId, "REQUEST_APPOINTMENT", "DB insert failed (appointment)");
+        }
+
+        JsonObject resp = baseResponse("REQUEST_APPOINTMENT", requestId, "OK", "Appointment created");
+        JsonObject respPayload = new JsonObject();
+        respPayload.addProperty("appointmentId", appId);
+        resp.add("payload", respPayload);
+
+        return gson.toJson(resp);
+    }
+
+    /**
+     * LIST_APPOINTMENTS
+     * Admite dos variantes de payload:
+     * - { "doctorId": 1 }
+     * - { "patientId": 5 }
+     * Si vienen ambos, priorizamos doctorId.
+     */
+    private static String handleListAppointments(JsonObject req, String requestId) {
+        JsonObject payload = getPayload(req);
+
+        int doctorId  = getInt(payload, "doctorId",  -1);
+        int patientId = getInt(payload, "patientId", -1);
+
+        java.util.List<AppointmentDAO.AppointmentMeta> appointments;
+        String scope;
+
+        if (doctorId > 0) {
+            appointments = AppointmentDAO.listByDoctor(doctorId);
+            scope = "DOCTOR";
+        } else if (patientId > 0) {
+            appointments = AppointmentDAO.listByPatient(patientId);
+            scope = "PATIENT";
+        } else {
+            return error(requestId, "LIST_APPOINTMENTS",
+                    "You must provide doctorId or patientId in payload");
+        }
+
+        JsonArray arr = new JsonArray();
+        for (AppointmentDAO.AppointmentMeta a : appointments) {
+            JsonObject jo = new JsonObject();
+            jo.addProperty("id", a.getId());
+            jo.addProperty("doctorId", a.getDoctorId());
+            jo.addProperty("patientId", a.getPatientId());
+            jo.addProperty("datetime", a.getDatetime());
+            jo.addProperty("message", a.getMessage());
+            arr.add(jo);
+        }
+
+        JsonObject resp = baseResponse("LIST_APPOINTMENTS", requestId, "OK",
+                "Appointments retrieved for " + scope);
+        JsonObject respPayload = new JsonObject();
+        respPayload.add("appointments", arr);
+        resp.add("payload", respPayload);
+
+        return gson.toJson(resp);
+    }
+
+    /**
+     * SEND_MESSAGE
+     * Payload esperado:
+     * {
+     *   "doctorId": 1,
+     *   "patientId": 5,
+     *   "senderRole": "PATIENT",   // o "DOCTOR"
+     *   "text": "Hola doctor, me duele el pecho"
+     * }
+     */
+    private static String handleSendMessage(JsonObject req, String requestId) {
+        JsonObject payload = getPayload(req);
+
+        int doctorId  = getInt(payload, "doctorId",  -1);
+        int patientId = getInt(payload, "patientId", -1);
+        String senderRole = getString(payload, "senderRole", null);
+        String text       = getString(payload, "text", null);
+
+        if (doctorId <= 0 || patientId <= 0) {
+            return error(requestId, "SEND_MESSAGE",
+                    "Missing or invalid doctorId / patientId");
+        }
+        if (senderRole == null || (!senderRole.equals("DOCTOR") && !senderRole.equals("PATIENT"))) {
+            return error(requestId, "SEND_MESSAGE",
+                    "senderRole must be 'DOCTOR' or 'PATIENT'");
+        }
+        if (text == null || text.isBlank()) {
+            return error(requestId, "SEND_MESSAGE",
+                    "Message text cannot be empty");
+        }
+
+        String timestamp = LocalDateTime.now().toString();
+
+        Integer msgId = MessageDAO.insert(doctorId, patientId, senderRole, timestamp, text);
+        if (msgId == null) {
+            return error(requestId, "SEND_MESSAGE", "DB insert failed (message)");
+        }
+
+        JsonObject resp = baseResponse("SEND_MESSAGE", requestId, "OK", "Message stored");
+        JsonObject respPayload = new JsonObject();
+        respPayload.addProperty("messageId", msgId);
+        respPayload.addProperty("timestamp", timestamp);
+        resp.add("payload", respPayload);
+
+        return gson.toJson(resp);
+    }
+
+    /**
+     * LIST_MESSAGES
+     * Payload esperado:
+     * {
+     *   "doctorId": 1,
+     *   "patientId": 5
+     * }
+     */
+    private static String handleListMessages(JsonObject req, String requestId) {
+        JsonObject payload = getPayload(req);
+
+        int doctorId  = getInt(payload, "doctorId",  -1);
+        int patientId = getInt(payload, "patientId", -1);
+
+        if (doctorId <= 0 || patientId <= 0) {
+            return error(requestId, "LIST_MESSAGES",
+                    "You must provide doctorId and patientId in payload");
+        }
+
+        List<MessageDAO.MessageMeta> msgs =
+                MessageDAO.listConversation(doctorId, patientId);
+
+        JsonArray arr = new JsonArray();
+
+        for (MessageDAO.MessageMeta m : msgs) {
+            JsonObject jo = new JsonObject();
+
+            // 🔥 CAMBIO NECESARIO
+            jo.addProperty("messageId", m.getId());
+
+            jo.addProperty("doctorId", m.getDoctorId());
+            jo.addProperty("patientId", m.getPatientId());
+            jo.addProperty("senderRole", m.getSenderRole());
+            jo.addProperty("timestamp", m.getTimestamp());
+            jo.addProperty("text", m.getText());
+
+            arr.add(jo);
+        }
+
+        JsonObject resp = baseResponse("LIST_MESSAGES", requestId, "OK",
+                "Conversation messages retrieved");
+        JsonObject respPayload = new JsonObject();
+        respPayload.add("messages", arr);
         resp.add("payload", respPayload);
 
         return gson.toJson(resp);
