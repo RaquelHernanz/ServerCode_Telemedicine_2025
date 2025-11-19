@@ -4,11 +4,37 @@ import java.sql.*;
 
 public class PatientDAO { // crear paciente en la base de datos
 
-    // Inserta paciente
-    public static boolean register(String name, String surname, String email, String pwd, String dob, String sex, String phone) {
+    private static Integer getDoctorIdByName(String doctorName) {
+        String sql = "SELECT id FROM doctors WHERE name = ?";
 
-        // registra al paciente y lo añade a la base de datos
-        String sql = "INSERT INTO patients(name,surname,email,password,dob,sex,phone) VALUES(?,?,?,?,?,?,?)";
+        try (PreparedStatement ps = DatabaseManager.get().prepareStatement(sql)) {
+            ps.setString(1, doctorName);
+            ResultSet rs = ps.executeQuery();
+
+            if (rs.next()) {
+                return rs.getInt("id"); // doctor encontrado
+            }
+            return null; // doctor NO encontrado
+
+        } catch (SQLException e) {
+            System.err.println("[DB] Doctor lookup error: " + e.getMessage());
+            return null;
+        }
+    }
+
+    // Inserta paciente
+    public static boolean registerPatient(String name, String surname, String email, String pwd,
+                                          String dob, String sex, String phone, String doctorName) {
+
+        // Buscar ID del doctor
+        Integer doctorId = getDoctorIdByName(doctorName);
+        if (doctorId == null) {
+            System.err.println("[DB] Doctor not found: " + doctorName);
+            return false; // o podrías permitir registro sin doctor
+        }
+
+        String sql = "INSERT INTO patients(name,surname,email,password,dob,sex,phone,doctor_id) VALUES(?,?,?,?,?,?,?,?)";
+
         try (PreparedStatement ps = DatabaseManager.get().prepareStatement(sql)) {
             ps.setString(1, name);
             ps.setString(2, surname);
@@ -17,8 +43,11 @@ public class PatientDAO { // crear paciente en la base de datos
             ps.setString(5, dob);
             ps.setString(6, sex);
             ps.setString(7, phone);
+            ps.setInt(8, doctorId);
+
             ps.executeUpdate();
             return true;
+
         } catch (SQLException e) {
             if (e.getMessage() != null && e.getMessage().contains("UNIQUE")) {
                 System.err.println("[DB] Email already registered: " + email);

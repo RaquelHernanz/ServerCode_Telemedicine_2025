@@ -12,8 +12,7 @@ import java.util.List;
  * Interpreta los mensajes JSON de los clientes (Patient/Doctor).
  * Formato esperado: {"action":"...","requestId":"...","payload":{...}}
  */
-public class
-Protocol {
+public class Protocol {
 
     // Gson para parsear y construir JSON
     private static final Gson gson = new Gson();
@@ -92,6 +91,7 @@ Protocol {
         String dob      = getString(payload, "dob",      ""); // "yyyy-MM-dd"
         String sex      = getString(payload, "sex",      "");
         String phone    = getString(payload, "phone",    "");
+        String doctorName  = getString(payload, "doctorName",  "");
 
         // Validaciones mínimas
         if (name.isBlank() || surname.isBlank() || email.isBlank() || password.isBlank()) {
@@ -101,7 +101,7 @@ Protocol {
         String passwordHash = Encryption.encryptPassword(password);
 
         // Insertar en BD
-        boolean ok = PatientDAO.register(name, surname, email, passwordHash, dob, sex, phone);
+        boolean ok = PatientDAO.registerPatient(name, surname, email, passwordHash, dob, sex, phone, doctorName);
         Integer patientId = ok ? PatientDAO.getIdByEmail(email) : null;
         if (!ok || patientId == null) {
             return error(requestId, "REGISTER_PATIENT", "Register failed (maybe duplicated email)");
@@ -331,7 +331,7 @@ Protocol {
         return gson.toJson(resp);
     }
 
-    // Archivo: Protocol.java (Añadir este nuevo método)
+    // Archivo: Protocol.java (Añadir este nuevo métdo)
 
     /**
      * LIST_DOCTORS -> Devuelve una lista de todos los doctores registrados.
