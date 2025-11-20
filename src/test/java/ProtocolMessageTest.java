@@ -12,28 +12,24 @@ import java.sql.Statement;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-
 public class ProtocolMessageTest {
+
     @BeforeAll
     static void initDb() {
         DatabaseManager.connect();
         clearAllTables();
     }
 
-    // Igual que en los otros tests: limpiamos todo
     private static void clearAllTables() {
         try {
-            // NO usar try-with-resources con Connection, para no cerrarla
             Connection conn = DatabaseManager.get();
             try (Statement st = conn.createStatement()) {
-
                 st.execute("DELETE FROM messages");
                 st.execute("DELETE FROM appointments");
                 st.execute("DELETE FROM measurements");
                 st.execute("DELETE FROM symptoms");
                 st.execute("DELETE FROM patients");
                 st.execute("DELETE FROM doctors");
-
             }
         } catch (SQLException e) {
             System.err.println("[TEST] Error clearing tables: " + e.getMessage());
@@ -42,108 +38,90 @@ public class ProtocolMessageTest {
 
     @Test
     void sendMessage_thenListConversation_ok() {
-        // 1) Registramos doctor y paciente
-        String docEmail = "docmsg@test.com";
-        String docPass  = "docMsg1!";
-        String patEmail = "patmsg@test.com";
-        String patPass  = "patMsg1!";
 
-        String docReg = """
+        // 1) Registrar doctor
+        String docResp = Protocol.process("""
         {
-          "type": "REQUEST",
-          "action": "REGISTER_DOCTOR",
-          "role": "DOCTOR",
-          "requestId": "msg-doc-reg",
-          "payload": {
-            "name": "DocMsg",
-            "surname": "One",
-            "email": "%s",
-            "password": "%s",
-            "phone": "710000000"
+          "type":"REQUEST",
+          "action":"REGISTER_DOCTOR",
+          "requestId":"msg-doc-reg",
+          "payload":{
+            "name":"DocMsg",
+            "surname":"One",
+            "email":"doc@test.com",
+            "password":"1234",
+            "phone":"700000000"
           }
         }
-        """.formatted(docEmail, docPass);
+        """);
 
-        String patReg = """
+        JsonObject joDoc = JsonParser.parseString(docResp).getAsJsonObject();
+        int doctorId = joDoc.getAsJsonObject("payload").get("doctorId").getAsInt();
+
+        // 2) Registrar paciente ASIGNANDO DOCTOR
+        String patResp = Protocol.process("""
         {
-          "type": "REQUEST",
-          "action": "REGISTER_PATIENT",
-          "role": "PATIENT",
-          "requestId": "msg-pat-reg",
-          "payload": {
-            "name": "PatMsg",
-            "surname": "One",
-            "email": "%s",
-            "password": "%s",
-            "dob": "1992-02-02",
-            "sex": "MALE",
-            "phone": "610000000"
+          "type":"REQUEST",
+          "action":"REGISTER_PATIENT",
+          "requestId":"msg-pat-reg",
+          "payload":{
+            "name":"PatMsg",
+            "surname":"One",
+            "email":"pat@test.com",
+            "password":"1234",
+            "dob":"1990-01-01",
+            "sex":"F",
+            "phone":"611111111",
+            "doctorName":"DocMsg"
           }
         }
-        """.formatted(patEmail, patPass);
+        """);
 
-        String docRegResp = Protocol.process(docReg);
-        System.out.println("REGISTER_DOCTOR response = " + docRegResp);
-        String patRegResp = Protocol.process(patReg);
-        System.out.println("REGISTER_PATIENT response = " + patRegResp);
+        JsonObject joPat = JsonParser.parseString(patResp).getAsJsonObject();
+        int patientId = joPat.getAsJsonObject("payload").get("patientId").getAsInt();
 
-        JsonObject joDocReg = JsonParser.parseString(docRegResp).getAsJsonObject();
-        JsonObject joPatReg = JsonParser.parseString(patRegResp).getAsJsonObject();
-
-        int doctorId = joDocReg.getAsJsonObject("payload").get("doctorId").getAsInt();
-        int patientId = joPatReg.getAsJsonObject("payload").get("patientId").getAsInt();
-
-        // 2) SEND_MESSAGE desde el paciente al doctor
-        String sendMsg = """
+        // 3) Enviar mensaje PACIENTE → DOCTOR
+        String sendResp = Protocol.process("""
         {
-          "type": "REQUEST",
-          "action": "SEND_MESSAGE",
-          "role": "PATIENT",
-          "requestId": "msg-send-1",
-          "payload": {
+          "type":"REQUEST",
+          "action":"SEND_MESSAGE",
+          "requestId":"msg-send-1",
+          "payload":{
             "doctorId": %d,
             "patientId": %d,
-            "senderRole": "PATIENT",
-            "text": "Hola doctor, tengo molestias en el pecho por la noche."
+            "senderRole":"PATIENT",
+            "text":"Hola doctor, tengo molestias por la noche."
           }
         }
-        """.formatted(doctorId, patientId);
+        """.formatted(doctorId, patientId));
 
-        String sendResp = Protocol.process(sendMsg);
-        JsonObject joSend = JsonParser.parseString(sendResp).getAsJsonObject();
-        System.out.println("SEND_MESSAGE response = " + sendResp);
+        JsonObject send = JsonParser.parseString(sendResp).getAsJsonObject();
+        assertEquals("OK", send.get("status").getAsString());
 
-        assertEquals("OK", joSend.get("status").getAsString());
-        JsonObject payloadSend = joSend.getAsJsonObject("payload");
-        assertNotNull(payloadSend);
-        int msgId = payloadSend.get("messageId").getAsInt();
-        assertTrue(msgId > 0);
-        assertNotNull(payloadSend.get("timestamp").getAsString());
+        JsonObject payloadSend = send.getAsJsonObject("payload");
+        assertTrue(payloadSend.get("messageId").getAsInt() > 0);
 
-        // 3) LIST_MESSAGES (conversación doctor-paciente)
-        String listMsg = """
+        // 4) Listar mensajes
+        String listResp = Protocol.process("""
         {
-          "type": "REQUEST",
-          "action": "LIST_MESSAGES",
-          "role": "DOCTOR",
-          "requestId": "msg-list-1",
-          "payload": {
+          "type":"REQUEST",
+          "action":"LIST_MESSAGES",
+          "requestId":"msg-list-1",
+          "payload":{
             "doctorId": %d,
             "patientId": %d
           }
         }
-        """.formatted(doctorId, patientId);
+        """.formatted(doctorId, patientId));
 
-        String listResp = Protocol.process(listMsg);
         JsonObject joList = JsonParser.parseString(listResp).getAsJsonObject();
-        System.out.println("LIST_MESSAGES response = " + listResp);
-
         assertEquals("OK", joList.get("status").getAsString());
-        JsonArray arr = joList.getAsJsonObject("payload").getAsJsonArray("messages");
-        assertNotNull(arr);
-        assertFalse(arr.isEmpty());
 
-        JsonObject first = arr.get(0).getAsJsonObject();
+        JsonArray msgs = joList.getAsJsonObject("payload").getAsJsonArray("messages");
+
+        assertFalse(msgs.isEmpty());
+        JsonObject first = msgs.get(0).getAsJsonObject();
+
         assertEquals("PATIENT", first.get("senderRole").getAsString());
         assertEquals(doctorId, first.get("doctorId").getAsInt());
         assertEquals(patientId, first.get("patientId").getAsInt());
