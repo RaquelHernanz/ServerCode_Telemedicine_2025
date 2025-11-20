@@ -12,7 +12,7 @@ import java.time.format.DateTimeFormatter;
 
 /**
  * Guarda y lee señales de BITalino en CSV por carpeta de paciente.
- * Estructura: data/<carpeta>/signals_YYYY-MM-DD.csv
+ * Estructura: data/carpeta/signals_YYYY-MM-DD.csv
  */
 public class DataStorage {
 
