@@ -6,7 +6,6 @@ import server.Protocol;
 import server.database.DatabaseManager;
 import server.database.MeasurementDAO;
 import server.database.PatientDAO;
-
 import java.io.File;
 import java.nio.file.Files;
 import java.time.LocalDate;
