@@ -2,23 +2,48 @@ package utilities;
 
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import javax.crypto.SecretKeyFactory;
+import javax.crypto.spec.PBEKeySpec;
+import java.nio.charset.StandardCharsets;
+import java.security.NoSuchAlgorithmException;
+import java.security.spec.InvalidKeySpecException;
 
+//Current version: PBKDF2WithHmacSHA256, more secure and harder to broke
 public class Encryption {
 
-    public static String encryptPassword(String password){
-        try{
-            MessageDigest md = MessageDigest.getInstance("SHA-256");
-            byte [] hash = md.digest(password.getBytes());
+    private static final String ALGORITHM = "PBKDF2WithHmacSHA256";
+    private static final int ITERATIONS = 65536;
+    private static final int KEY_LENGTH = 256;
 
-            StringBuilder hexString = new StringBuilder();
-            for (byte b : hash) {
-                String hex = Integer.toHexString(0xff & b);
-                if (hex.length() == 1) hexString.append('0');
-                hexString.append(hex);
-            }
-            return hexString.toString();
-        } catch (NoSuchAlgorithmException e) {
-            throw new RuntimeException("Error al encriptar la contraseña: " + e.getMessage());
+    // Sal fija: mantiene compatibilidad con tu flujo actual
+    private static final byte[] SALT =
+            "Telemedicine_2025_SALT".getBytes(StandardCharsets.UTF_8);
+
+    public static String encryptPassword(String password) {
+        try {
+            PBEKeySpec spec = new PBEKeySpec(
+                    password.toCharArray(),
+                    SALT,
+                    ITERATIONS,
+                    KEY_LENGTH
+            );
+
+            SecretKeyFactory skf = SecretKeyFactory.getInstance(ALGORITHM);
+            byte[] hash = skf.generateSecret(spec).getEncoded();
+            return bytesToHex(hash);
+
+        } catch (NoSuchAlgorithmException | InvalidKeySpecException e) {
+            throw new RuntimeException("Error al encriptar la contraseña", e);
         }
+    }
+
+    private static String bytesToHex(byte[] bytes) {
+        StringBuilder hex = new StringBuilder(bytes.length * 2);
+        for (byte b : bytes) {
+            String h = Integer.toHexString(0xff & b);
+            if (h.length() == 1) hex.append('0');
+            hex.append(h);
+        }
+        return hex.toString();
     }
 }

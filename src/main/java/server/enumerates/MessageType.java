@@ -1,4 +1,4 @@
-package server;
+package server.enumerates;
 
 public enum MessageType {
     REQUEST, RESPONSE,EVENT

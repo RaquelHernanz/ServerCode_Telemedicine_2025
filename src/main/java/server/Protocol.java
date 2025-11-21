@@ -125,7 +125,7 @@ public class Protocol {
         String name     = getString(payload, "name",     "");
         String surname  = getString(payload, "surname",  "");
         String email    = getString(payload, "email",    "");
-        // Asumimos que la contraseña ya está hasheada por el cliente o la manejaremos en el DAO
+        // La contraseña viene en claro desde el cliente; se hashea aquí antes de ir al DAO
         String password = getString(payload, "password", "");
         String phone    = getString(payload, "phone",    "");
 
@@ -578,6 +578,7 @@ public class Protocol {
 
         return gson.toJson(resp);
     }
+
 
     // ------------------------- HELPERS JSON -------------------------
 
