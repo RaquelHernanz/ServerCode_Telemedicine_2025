@@ -21,16 +21,22 @@ public class Protocol {
      * Punto de entrada: recibe una línea de texto (JSON), devuelve otra (JSON).
      */
     public static String process(String message) {
+        // Recibe un mensaje JSON enviado por el cliente (por socket).
+        // Lo convierte a un objeto JSON.
+        // Mira qué acción quiere hacer el cliente (login, registrar, enviar señal, pedir doctores…).
+        // Llama al métdo adecuado (handleRegisterPatient(), handleLogin(), etc.).
+        // Devuelve un JSON con la respuesta que el servidor enviará al cliente.
+
         try {
             // Parseamos el texto a objeto JSON (o null si estaba vacío/incorrecto)
-            JsonObject req = gson.fromJson(message, JsonObject.class);
+            JsonObject req = gson.fromJson(message, JsonObject.class); // Convierte el string recibido por el socket en un JsonObject.
             if (req == null) {
                 return error(null, "UNKNOWN", "Empty message");
             }
 
             // Sacamos "action" (qué quiere hacer el cliente)
             String action = req.has("action") ? req.get("action").getAsString() : null;
-            // requestId es opcional (para que el cliente correlacione la respuesta)
+            // requestId es opcional (para que el cliente correlacione la respuesta. el servidor se lo envia para que el cliente sepa relacionar)
             String requestId = req.has("requestId") ? req.get("requestId").getAsString() : null;
 
             if (action == null) {
@@ -38,7 +44,8 @@ public class Protocol {
             }
 
             // Enrutamos por acción
-            switch (action) {
+            switch (action) { // router
+                // según la acción envía al métdo correcto
                 case "REGISTER_PATIENT":
                     return handleRegisterPatient(req, requestId);
                 case "REGISTER_DOCTOR":
@@ -82,8 +89,8 @@ public class Protocol {
 
     // REGISTRO de paciente -> inserta en BD y devuelve su id
     private static String handleRegisterPatient(JsonObject req, String requestId) {
-        JsonObject payload = getPayload(req); // coge payload o {}
-        // Leemos campos
+        JsonObject payload = getPayload(req); // req = JSON completo enviado por el cliente, payload solo contiene los datos reales
+        // Leemos datos del JSON
         String name     = getString(payload, "name",     "");
         String surname  = getString(payload, "surname",  "");
         String email    = getString(payload, "email",    "");
@@ -93,33 +100,35 @@ public class Protocol {
         String phone    = getString(payload, "phone",    "");
         String doctorName  = getString(payload, "doctorName",  "");
 
-        // Validaciones mínimas
+        // Validaciones mínimas y si no devuelve error
         if (name.isBlank() || surname.isBlank() || email.isBlank() || password.isBlank()) {
             return error(requestId, "REGISTER_PATIENT", "Missing required fields (name, surname, email, password)");
         }
 
         String passwordHash = Encryption.encryptPassword(password);
+        // hashear la contraseña, el servidor nunca guarda la contraseña en texto plano siempre su hash
 
         // Insertar en BD
         boolean ok = PatientDAO.registerPatient(name, surname, email, passwordHash, dob, sex, phone, doctorName);
-        Integer patientId = ok ? PatientDAO.getIdByEmail(email) : null;
-        if (!ok || patientId == null) {
+        // en la tabla
+        Integer patientId = ok ? PatientDAO.getIdByEmail(email) : null; // si la inserción fue bien, los ID de los emails coinciden
+        if (!ok || patientId == null) { // si algo falla, da error
             return error(requestId, "REGISTER_PATIENT", "Register failed (maybe duplicated email)");
         }
 
-        // Respuesta OK con id
+        // Respuesta OK del servidor al paciente con id para asegurarle que se ha realizado correctamente la acción
         JsonObject resp = baseResponse("REGISTER_PATIENT", requestId, "OK","Patient registered successfully");
-        JsonObject respPayload = new JsonObject();
-        respPayload.addProperty("patientId", patientId);
-        resp.add("payload", respPayload);
-        return gson.toJson(resp);
+        JsonObject respPayload = new JsonObject(); // crea un espacio vacío para escribir respuesta
+        respPayload.addProperty("patientId", patientId); // añade el id del paciente al JSON
+        resp.add("payload", respPayload); // añade la respuesta correcta al JSON
+        return gson.toJson(resp); // devuelve la respuesta como string
     }
 
 
 
     //REGISTRO de doctor -> inserta en BD y devuelve su id
     private static String handleRegisterDoctor(JsonObject req, String requestId) {
-        JsonObject payload = getPayload(req);
+        JsonObject payload = getPayload(req); //req = JSON completo enviado por el cliente, payload solo contiene los datos reales
 
         // Obtenemos los campos del JSON payload
         String name     = getString(payload, "name",     "");
@@ -135,21 +144,22 @@ public class Protocol {
         }
 
         String passwordHash = Encryption.encryptPassword(password);
+        // hashear la contraseña, el servidor nunca guarda la contraseña en texto plano siempre su hash
 
-        // Llama a DoctorDAO para insertar
+        // Llama a DoctorDAO para insertar en la tabla
         boolean ok = DoctorDAO.register(name, surname, email, passwordHash, phone);
 
-        if (!ok) {
+        if (!ok) { // si no se inserta bien da error
             return error(requestId, "REGISTER_DOCTOR", "Register failed (maybe duplicated email)");
         }
 
-        // Buscamos el ID para devolverlo al cliente
+        // Buscamos el ID para guardar su sesión y poder identificar al doctor
         Integer doctorId = DoctorDAO.getIdByEmail(email);
         if (doctorId == null) {
             return error(requestId, "REGISTER_DOCTOR", "Doctor registered but ID not found. Internal error.");
         }
 
-        // Construcción de la respuesta OK
+        // Construcción de la respuesta OK COMO ANTERIOR MÉTDO
         JsonObject resp = baseResponse("REGISTER_DOCTOR", requestId, "OK","Doctor registered successfully");
         JsonObject respPayload = new JsonObject();
         respPayload.addProperty("doctorId", doctorId); // Devolvemos el ID
@@ -157,7 +167,7 @@ public class Protocol {
         return gson.toJson(resp);
     }
 
-    // Archivo: Protocol.java (REEMPLAZAR el método handleLogin actual)
+    // Archivo: Protocol.java (REEMPLAZAR el métdo handleLogin actual)
 
     /**
      * LOGIN -> valida credenciales del usuario y diferencia el rol (Patient o Doctor)
