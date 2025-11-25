@@ -106,6 +106,7 @@ public class ServerMain {
         if (serverSocket != null && !serverSocket.isClosed()) {
             try {
                 serverSocket.close();
+                System.exit(0);
             } catch (IOException e) {
                 System.err.println("[Admin] Error closing ServerSocket: " + e.getMessage());
             }
