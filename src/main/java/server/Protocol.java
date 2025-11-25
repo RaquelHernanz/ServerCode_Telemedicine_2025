@@ -64,6 +64,8 @@ public class Protocol {
                     return handleListAppointments(req, requestId);
                 case "LIST_MEASUREMENTS":
                     return handleListMeasurements(req, requestId);
+                case "GET_MEASUREMENT_VALUES":
+                    return handleGetMeasurementValues(req, requestId);
                 case "LIST_SYMPTOMS":
                     return handleListSymptoms(req, requestId);
                 case "LIST_DOCTORS":
@@ -98,18 +100,43 @@ public class Protocol {
         String dob      = getString(payload, "dob",      ""); // "yyyy-MM-dd"
         String sex      = getString(payload, "sex",      "");
         String phone    = getString(payload, "phone",    "");
-        String doctorName  = getString(payload, "doctorName",  "");
+
+        // === DOCTOR (acepta id, email o nombre) ===
+        int doctorId = payload.has("doctorId") ? payload.get("doctorId").getAsInt() : -1;
+        String doctorEmail = getString(payload, "doctorEmail", "");
+        String doctorName  = getString(payload, "doctorName", "");
+
 
         // Validaciones mínimas y si no devuelve error
         if (name.isBlank() || surname.isBlank() || email.isBlank() || password.isBlank()) {
             return error(requestId, "REGISTER_PATIENT", "Missing required fields (name, surname, email, password)");
         }
 
+        // === Resolver doctor ===
+        Doctor doctor = null;
+
+        if (doctorId > 0) {
+            doctor = DoctorDAO.getDoctorById(doctorId);
+        }
+        if (doctor == null && !doctorEmail.isBlank()) {
+            doctor = DoctorDAO.getDoctorByEmail(doctorEmail);
+        }
+        if (doctor == null && !doctorName.isBlank()) {
+            doctor = DoctorDAO.getDoctorByName(doctorName);
+        }
+
+        if (doctor == null) {
+            System.err.println("[DB] Doctor not found: " +
+                    (doctorId > 0 ? "id=" + doctorId :
+                            !doctorEmail.isBlank() ? doctorEmail : doctorName));
+            return error(requestId, "REGISTER_PATIENT", "Doctor not found");
+        }
+
         String passwordHash = Encryption.encryptPassword(password);
         // hashear la contraseña, el servidor nunca guarda la contraseña en texto plano siempre su hash
 
         // Insertar en BD
-        boolean ok = PatientDAO.registerPatient(name, surname, email, passwordHash, dob, sex, phone, doctorName);
+        boolean ok = PatientDAO.registerPatient(name, surname, email, passwordHash, dob, sex, phone, doctor.getId());
         // en la tabla
         Integer patientId = ok ? PatientDAO.getIdByEmail(email) : null; // si la inserción fue bien, los ID de los emails coinciden
         if (!ok || patientId == null) { // si algo falla, da error
@@ -282,6 +309,61 @@ public class Protocol {
         resp.add("payload", respPayload);
         return gson.toJson(resp);
     }
+
+    // GET_MEASUREMENT_VALUES -> devuelve los valores (array de enteros) de una medición concreta
+    private static String handleGetMeasurementValues(JsonObject req, String requestId) {
+        JsonObject payload = getPayload(req);
+        int measurementId = getInt(payload, "measurementId", -1);
+
+        if (measurementId <= 0) {
+            return error(requestId, "GET_MEASUREMENT_VALUES", "Missing or invalid measurementId.");
+        }
+
+        // 1) Buscar metadatos en BD
+        MeasurementDAO.MeasurementMeta meta = MeasurementDAO.getById(measurementId);
+        if (meta == null) {
+            return error(requestId, "GET_MEASUREMENT_VALUES", "Measurement not found.");
+        }
+
+        // 2) Leer el CSV asociado
+        String csvJson = DataStorage.loadCsvAsJson(meta.getFilePath());
+        if (csvJson == null) {
+            return error(requestId, "GET_MEASUREMENT_VALUES", "CSV file not found or empty.");
+        }
+
+        // csvJson tiene la forma: {"header":"timestamp,ecg,eda","rows":["0,523,-","1,510,-",...]}
+        JsonObject csvObj = gson.fromJson(csvJson, JsonObject.class);
+        JsonArray rows = csvObj.getAsJsonArray("rows");
+
+        // 3) Convertir las filas a un array de valores (enteros)
+        JsonArray values = new JsonArray();
+        for (JsonElement rowEl : rows) {
+            String row = rowEl.getAsString();      // "0,523,-"
+            String[] parts = row.split(",");
+            if (parts.length >= 2) {
+                try {
+                    int val = Integer.parseInt(parts[1].trim()); // la columna del valor
+                    values.add(val);
+                } catch (NumberFormatException ignored) {
+                    // si hay una fila rara, la saltamos
+                }
+            }
+        }
+
+        // 4) Construir la respuesta
+        JsonObject resp = baseResponse("GET_MEASUREMENT_VALUES", requestId, "OK", "Values loaded");
+        JsonObject respPayload = new JsonObject();
+        respPayload.addProperty("measurementId", meta.getId());
+        respPayload.addProperty("type", meta.getType());
+        respPayload.addProperty("date", meta.getStartedAt());
+        respPayload.add("values", values);
+        resp.add("payload", respPayload);
+
+        return gson.toJson(resp);
+    }
+
+
+
 
     //LIST_PATIENTS -> Lista los pacientes asociados a un doctor que ha iniciado sesión.
     private static String handleListPatients(JsonObject req, String requestId) {

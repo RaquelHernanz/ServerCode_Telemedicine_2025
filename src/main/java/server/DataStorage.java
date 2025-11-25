@@ -115,6 +115,8 @@ public class DataStorage {
         }
     }
 
+
+
     /**
      * Lee un CSV cualquiera (por ruta absoluta o relativa) y devuelve:
      * {"header":"timestamp,ecg,eda","rows":["...","..."]}

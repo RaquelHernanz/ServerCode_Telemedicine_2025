@@ -81,4 +81,28 @@ public class MeasurementDAO {
 
         return result;
     }
+
+    // Obtiene los metadatos de una medición por su ID
+    public static MeasurementMeta getById(int measurementId) {
+        String sql = "SELECT id, type, started_at, file_path " +
+                "FROM measurements WHERE id = ?";
+
+        try (PreparedStatement ps = DatabaseManager.get().prepareStatement(sql)) {
+            ps.setInt(1, measurementId);
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) {
+                    return new MeasurementMeta(
+                            rs.getInt("id"),
+                            rs.getString("type"),
+                            rs.getString("started_at"),
+                            rs.getString("file_path")
+                    );
+                }
+            }
+        } catch (SQLException e) {
+            System.err.println("[DB] Measurement getById error: " + e.getMessage());
+        }
+        return null;
+    }
+
 }

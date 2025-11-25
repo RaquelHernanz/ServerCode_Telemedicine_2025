@@ -24,16 +24,10 @@ public class PatientDAO { // crear paciente en la base de datos
 
     // Inserta paciente
     public static boolean registerPatient(String name, String surname, String email, String pwd,
-                                          String dob, String sex, String phone, String doctorName) {
+                                          String dob, String sex, String phone, int doctorId) {
 
-        // Buscar ID del doctor
-        Integer doctorId = getDoctorIdByName(doctorName);
-        if (doctorId == null) {
-            System.err.println("[DB] Doctor not found: " + doctorName);
-            return false; // o podrías permitir registro sin doctor
-        }
-
-        String sql = "INSERT INTO patients(name,surname,email,password,dob,sex,phone,doctor_id) VALUES(?,?,?,?,?,?,?,?)";
+        String sql = "INSERT INTO patients(name,surname,email,password,dob,sex,phone,doctor_id) " +
+                "VALUES(?,?,?,?,?,?,?,?)";
 
         try (PreparedStatement ps = DatabaseManager.get().prepareStatement(sql)) {
             ps.setString(1, name);

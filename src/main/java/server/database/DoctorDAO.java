@@ -139,4 +139,76 @@ public class DoctorDAO {
         }
         return doctorsList;
     }
+
+    // Obtener un doctor por su ID
+    public static Doctor getDoctorById(int id) {
+        String sql = "SELECT id, name, surname, email, phone FROM doctors WHERE id = ?";
+        try (PreparedStatement ps = DatabaseManager.get().prepareStatement(sql)) {
+            ps.setInt(1, id);
+            ResultSet rs = ps.executeQuery();
+            if (rs.next()) {
+                return new Doctor(
+                        rs.getInt("id"),
+                        rs.getString("name"),
+                        rs.getString("surname"),
+                        rs.getString("phone"),   // phonenumber
+                        rs.getString("email"),
+                        new ArrayList<>(),       // patients
+                        new ArrayList<>(),       // appointments
+                        new ArrayList<>()        // messages
+                );
+            }
+        } catch (SQLException e) {
+            System.err.println("[DB] getDoctorById error: " + e.getMessage());
+        }
+        return null;
+    }
+
+    // Obtener un doctor por su email
+    public static Doctor getDoctorByEmail(String email) {
+        String sql = "SELECT id, name, surname, email, phone FROM doctors WHERE email = ?";
+        try (PreparedStatement ps = DatabaseManager.get().prepareStatement(sql)) {
+            ps.setString(1, email);
+            ResultSet rs = ps.executeQuery();
+            if (rs.next()) {
+                return new Doctor(
+                        rs.getInt("id"),
+                        rs.getString("name"),
+                        rs.getString("surname"),
+                        rs.getString("phone"),
+                        rs.getString("email"),
+                        new ArrayList<>(),
+                        new ArrayList<>(),
+                        new ArrayList<>()
+                );
+            }
+        } catch (SQLException e) {
+            System.err.println("[DB] getDoctorByEmail error: " + e.getMessage());
+        }
+        return null;
+    }
+
+    // Obtener un doctor por su nombre (solo como último recurso)
+    public static Doctor getDoctorByName(String name) {
+        String sql = "SELECT id, name, surname, email, phone FROM doctors WHERE name = ?";
+        try (PreparedStatement ps = DatabaseManager.get().prepareStatement(sql)) {
+            ps.setString(1, name);
+            ResultSet rs = ps.executeQuery();
+            if (rs.next()) {
+                return new Doctor(
+                        rs.getInt("id"),
+                        rs.getString("name"),
+                        rs.getString("surname"),
+                        rs.getString("phone"),
+                        rs.getString("email"),
+                        new ArrayList<>(),
+                        new ArrayList<>(),
+                        new ArrayList<>()
+                );
+            }
+        } catch (SQLException e) {
+            System.err.println("[DB] getDoctorByName error: " + e.getMessage());
+        }
+        return null;
+    }
 }
