@@ -435,7 +435,6 @@ public class Protocol {
     }
 
 
-
     //LIST_PATIENTS -> Lista los pacientes asociados a un doctor que ha iniciado sesión.
     private static String handleListPatients(JsonObject req, String requestId) {
         JsonObject payload = getPayload(req);
