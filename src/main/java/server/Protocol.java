@@ -262,6 +262,7 @@ public class Protocol {
             respPayload.addProperty("surname", patient.getSurname());
             respPayload.addProperty("email", patient.getEmail());
             respPayload.addProperty("dob", patient.getDob());
+            respPayload.addProperty("doctor_id", patient.getDoctor().getId());//AÑADIDO
             if (patient.getSex() != null) {
                 respPayload.addProperty("sex", patient.getSex().toString());
             }
@@ -295,6 +296,7 @@ public class Protocol {
             respPayload.addProperty("surname", doctor.getSurname());
             respPayload.addProperty("email", doctor.getEmail());
             respPayload.addProperty("phone", doctor.getPhonenumber());
+            //respPayload.addProperty("patient_id", doctor.getPatients());
 
             resp.add("payload", respPayload);
             return gson.toJson(resp);
