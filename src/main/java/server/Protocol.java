@@ -598,6 +598,14 @@ public class Protocol {
                     "Missing or invalid doctorId / patientId / datetime");
         }
 
+        // COMPROBACIÓN DE DISPONIBILIDAD (¡EL PASO CRÍTICO!)
+        if (AppointmentDAO.isSlotTaken(doctorId, datetime)) {
+            // Si está ocupado, devolvemos un ERROR explícito al cliente.
+            return error(requestId, "REQUEST_APPOINTMENT",
+                    "Appointment slot already taken. Please choose another date or time.");
+        }
+
+        // Insertar solo si el slot está libre.
         Integer appId = AppointmentDAO.insert(doctorId, patientId, datetime, message);
         if (appId == null) {
             return error(requestId, "REQUEST_APPOINTMENT", "DB insert failed (appointment)");

@@ -111,4 +111,20 @@ public class AppointmentDAO {
         }
         return result;
     }
+
+    // Comprueba si un slot (DoctorId + Datetime) ya está ocupado.
+    public static boolean isSlotTaken(int doctorId, String datetime) {
+        // SQL: Busca cualquier fila que coincida con el doctor Y la fecha/hora.
+        String sql = "SELECT 1 FROM appointments WHERE doctor_id = ? AND datetime = ?";
+        try (PreparedStatement ps = DatabaseManager.get().prepareStatement(sql)) {
+            ps.setInt(1, doctorId);
+            ps.setString(2, datetime);
+            // Si el ResultSet tiene una fila (next() devuelve true), el slot está tomado.
+            return ps.executeQuery().next();
+        } catch (SQLException e) {
+            System.err.println("[DB] Appointment isSlotTaken error: " + e.getMessage());
+            // Si hay un error de DB, devolvemos true por seguridad (asumimos que está ocupado).
+            return true;
+        }
+    }
 }

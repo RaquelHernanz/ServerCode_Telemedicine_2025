@@ -88,6 +88,7 @@ public class DatabaseManager {
         message TEXT,
         FOREIGN KEY(doctor_id) REFERENCES doctors(id) ON DELETE CASCADE,
         FOREIGN KEY(patient_id) REFERENCES patients(id) ON DELETE CASCADE
+          UNIQUE (doctor_id, datetime)
       );""";
 
         String messages = """
