@@ -482,11 +482,11 @@ public class Protocol {
             return error(requestId, "LIST_PATIENTS", "Missing or invalid userId (doctorId) in request.");
         }
 
-        List<Patient> patients = DoctorDAO.getPatientsByDoctorId(doctorId);
+        List<Patient> patients = DoctorDAO.getPatientsByDoctorId(doctorId); // coges objetos paciente del doctor (objetos)
 
-        JsonArray arrayPatients = new JsonArray();
-        for (Patient p : patients) {
-            JsonObject jo = new JsonObject();
+        JsonArray arrayPatients = new JsonArray(); // crea un array para ir metiendo JSON
+        for (Patient p : patients) { // recorriendo los objetos de doctor
+            JsonObject jo = new JsonObject(); // creando el JSON
             jo.addProperty("id", p.getId());
             jo.addProperty("name", p.getName());
             jo.addProperty("surname", p.getSurname());
