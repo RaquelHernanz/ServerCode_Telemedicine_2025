@@ -470,7 +470,7 @@ public class Protocol {
         resp.addProperty("requestId", requestId);
         resp.addProperty("action", "LIST_PATIENTS");
         resp.addProperty("status", "OK");
-        resp.add("data", arrayPatients);
+        resp.add("patients", arrayPatients);
 
         return gson.toJson(resp);
     }
