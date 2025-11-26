@@ -448,7 +448,7 @@ public class Protocol {
 
         // CRUCIAL: Llama al DAO para obtener la lista de objetos Patient que acabas de implementar.
         List<Patient> patients = DoctorDAO.getPatientsByDoctorId(doctorId);
-        System.out.println(patients);
+        //System.out.println(patients);
 
         // --- Construir el JSON manualmente para evitar LocalDateTime ---
         // convertimos de JSON a objeto para mandar a doctor la lista de pacientes
