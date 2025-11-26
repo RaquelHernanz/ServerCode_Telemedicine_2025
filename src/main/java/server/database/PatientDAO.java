@@ -1,6 +1,12 @@
 package server.database;
 
+import pojos.Doctor;
+import pojos.Patient;
+import pojos.Sex;
+
 import java.sql.*;
+import java.util.ArrayList;
+import java.util.List;
 
 public class PatientDAO { // crear paciente en la base de datos
 
@@ -78,4 +84,55 @@ public class PatientDAO { // crear paciente en la base de datos
             return null;
         }
     }
+
+    public static Patient getPatientById(int id) {
+        String sql = "SELECT id, name, surname, email, dob, sex, phone, doctor_id FROM patients WHERE id = ?";
+        try (PreparedStatement ps = DatabaseManager.get().prepareStatement(sql)) {
+            ps.setInt(1, id);
+            ResultSet rs = ps.executeQuery();
+            if (rs.next()) {
+                int patientId      = rs.getInt("id");
+                String name        = rs.getString("name");
+                String surname     = rs.getString("surname");
+                String email       = rs.getString("email");
+                String dob         = rs.getString("dob");          // o conviertes a LocalDate si lo usas así
+                String sexString   = rs.getString("sex");
+                String phone       = rs.getString("phone");
+                int doctorId       = rs.getInt("doctor_id");
+                Doctor d = DoctorDAO.getDoctorById(doctorId);
+
+                Sex sex = null;
+                if (sexString != null) {
+                    try {
+                        sex = Sex.valueOf(sexString.toUpperCase());
+                    } catch (IllegalArgumentException e) {
+                        System.err.println("[DB] Unknown sex value in DB: " + sexString);
+                    }
+                }
+
+                Patient p = new Patient(
+                        patientId,
+                        name,
+                        surname,
+                        email,
+                        sex,
+                        phone,
+                        dob,
+                        new ArrayList<>(),   // appointments
+                        new ArrayList<>(),   // measurements
+                        new ArrayList<>(),   // symptoms
+                        d,                // doctor (puedes cargarlo con DoctorDAO.getDoctorById(doctorId) si quieres)
+                        new ArrayList<>()    // messages
+                );
+
+                return p;
+            }
+        } catch (SQLException e) {
+            System.err.println("[DB] getPatientById error: " + e.getMessage());
+        }
+        return null;
+    }
+
+
+
 }

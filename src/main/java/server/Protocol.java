@@ -143,14 +143,31 @@ public class Protocol {
             return error(requestId, "REGISTER_PATIENT", "Register failed (maybe duplicated email)");
         }
 
+        //Recuperar el paciente completo de la BD
+        Patient patient = PatientDAO.getPatientById(patientId);
+        if (patient == null) {
+            return error(requestId, "REGISTER_PATIENT", "Patient registered but not found");
+        }
+
         // Respuesta OK del servidor al paciente con id para asegurarle que se ha realizado correctamente la acción
         JsonObject resp = baseResponse("REGISTER_PATIENT", requestId, "OK","Patient registered successfully");
         JsonObject respPayload = new JsonObject(); // crea un espacio vacío para escribir respuesta
         respPayload.addProperty("patientId", patientId); // añade el id del paciente al JSON
+
+        // Datos extra para que el cliente pueda construir el POJO completo
+        respPayload.addProperty("name", patient.getName());
+        respPayload.addProperty("surname", patient.getSurname());
+        respPayload.addProperty("email", patient.getEmail());
+        respPayload.addProperty("dob", patient.getDob());
+        if (patient.getSex() != null) {
+            respPayload.addProperty("sex", patient.getSex().toString());
+        }
+        respPayload.addProperty("phone", patient.getPhonenumber());
+        respPayload.addProperty("doctorId", doctor.getId());
+
         resp.add("payload", respPayload); // añade la respuesta correcta al JSON
         return gson.toJson(resp); // devuelve la respuesta como string
     }
-
 
 
     //REGISTRO de doctor -> inserta en BD y devuelve su id
@@ -186,10 +203,22 @@ public class Protocol {
             return error(requestId, "REGISTER_DOCTOR", "Doctor registered but ID not found. Internal error.");
         }
 
+        Doctor doctor = DoctorDAO.getDoctorById(doctorId);
+        if (doctor == null) {
+            return error(requestId, "REGISTER_DOCTOR", "Doctor registered but not found");
+        }
+
         // Construcción de la respuesta OK COMO ANTERIOR MÉTDO
         JsonObject resp = baseResponse("REGISTER_DOCTOR", requestId, "OK","Doctor registered successfully");
         JsonObject respPayload = new JsonObject();
         respPayload.addProperty("doctorId", doctorId); // Devolvemos el ID
+
+        // Datos extra para el cliente
+        respPayload.addProperty("name", doctor.getName());
+        respPayload.addProperty("surname", doctor.getSurname());
+        respPayload.addProperty("email", doctor.getEmail());
+        respPayload.addProperty("phone", doctor.getPhonenumber());
+
         resp.add("payload", respPayload);
         return gson.toJson(resp);
     }
@@ -212,28 +241,61 @@ public class Protocol {
 
         // --- 1. INTENTO DE VALIDACIÓN COMO PACIENTE ---
         if (PatientDAO.validateLogin(username, passwordHash)) {
+
+            Integer pid = PatientDAO.getIdByEmail(username);
+            Patient patient = (pid != null) ? PatientDAO.getPatientById(pid) : null;
+
+            if (patient == null) {
+                return error(requestId, "LOGIN", "Patient not found after login");
+            }
+
             // Login exitoso como PACIENTE
             JsonObject resp = baseResponse("LOGIN", requestId, "OK", "Login successful (Patient)");
             JsonObject respPayload = new JsonObject();
-            Integer pid = PatientDAO.getIdByEmail(username);
 
-            respPayload.addProperty("userId", pid != null ? pid : 0);
+            respPayload.addProperty("userId", patient.getId());
             respPayload.addProperty("role", "PATIENT"); // <-- ROL
             respPayload.addProperty("token", "session-" + username);
+
+            // Datos básicos del paciente
+            respPayload.addProperty("name", patient.getName());
+            respPayload.addProperty("surname", patient.getSurname());
+            respPayload.addProperty("email", patient.getEmail());
+            respPayload.addProperty("dob", patient.getDob());
+            if (patient.getSex() != null) {
+                respPayload.addProperty("sex", patient.getSex().toString());
+            }
+            respPayload.addProperty("phone", patient.getPhonenumber());
+
             resp.add("payload", respPayload);
             return gson.toJson(resp);
         }
 
         // --- 2. INTENTO DE VALIDACIÓN COMO DOCTOR ---
         if (DoctorDAO.validateLogin(username, passwordHash)) {
+
+            Integer did = DoctorDAO.getIdByEmail(username);
+            Doctor doctor = (did != null) ? DoctorDAO.getDoctorById(did) : null;
+
+            if (doctor == null) {
+                return error(requestId, "LOGIN", "Doctor not found after login");
+            }
+
             // Login exitoso como DOCTOR
             JsonObject resp = baseResponse("LOGIN", requestId, "OK", "Login successful (Doctor)");
             JsonObject respPayload = new JsonObject();
-            Integer did = DoctorDAO.getIdByEmail(username);
 
-            respPayload.addProperty("userId", did != null ? did : 0);
+
+            respPayload.addProperty("userId", doctor.getId());
             respPayload.addProperty("role", "DOCTOR"); // <-- ROL
             respPayload.addProperty("token", "session-" + username);
+
+            // Datos básicos del doctor
+            respPayload.addProperty("name", doctor.getName());
+            respPayload.addProperty("surname", doctor.getSurname());
+            respPayload.addProperty("email", doctor.getEmail());
+            respPayload.addProperty("phone", doctor.getPhonenumber());
+
             resp.add("payload", respPayload);
             return gson.toJson(resp);
         }
@@ -361,7 +423,6 @@ public class Protocol {
 
         return gson.toJson(resp);
     }
-
 
 
 
