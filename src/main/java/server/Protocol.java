@@ -257,12 +257,18 @@ public class Protocol {
             respPayload.addProperty("role", "PATIENT"); // <-- ROL
             respPayload.addProperty("token", "session-" + username);
 
-            // Datos básicos del paciente
+            // Datos básicos del paciente y del doctor asignado
             respPayload.addProperty("name", patient.getName());
             respPayload.addProperty("surname", patient.getSurname());
             respPayload.addProperty("email", patient.getEmail());
             respPayload.addProperty("dob", patient.getDob());
+
             respPayload.addProperty("doctor_id", patient.getDoctor().getId());//AÑADIDO
+            respPayload.addProperty("doctorName", patient.getDoctor().getName());
+            respPayload.addProperty("doctorSurname", patient.getDoctor().getSurname());
+            respPayload.addProperty("doctorEmail", patient.getDoctor().getEmail());
+            respPayload.addProperty("doctorPhone", patient.getDoctor().getPhonenumber());
+
             if (patient.getSex() != null) {
                 respPayload.addProperty("sex", patient.getSex().toString());
             }
@@ -298,6 +304,7 @@ public class Protocol {
             respPayload.addProperty("phone", doctor.getPhonenumber());
             //respPayload.addProperty("patient_id", doctor.getPatients());
 
+
             resp.add("payload", respPayload);
             return gson.toJson(resp);
         }
@@ -305,6 +312,7 @@ public class Protocol {
         //  3. FALLO TOTAL
         return error(requestId, "LOGIN", "Invalid username or password");
     }
+
 
     // SÍNTOMAS -> inserta en tabla symptoms
     private static String handleSendSymptoms(JsonObject req, String requestId) {
