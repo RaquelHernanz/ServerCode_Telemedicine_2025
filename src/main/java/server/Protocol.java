@@ -450,19 +450,23 @@ public class Protocol {
         List<Patient> patients = DoctorDAO.getPatientsByDoctorId(doctorId);
         System.out.println(patients);
 
-        // Convertimos la lista de objetos Java (Patient) en un array JSON.
-        // Gson se encarga de convertir cada objeto Patient a su formato JSON.
-        JsonElement patientsJson = gson.toJsonTree(patients);
-
-        // Construcción de la respuesta OK
-        JsonObject resp = baseResponse("LIST_PATIENTS", requestId, "OK", "Patients retrieved successfully");
-        JsonObject respPayload = new JsonObject();
-
-        // Añadimos el array de pacientes al payload de la respuesta
-        respPayload.add("patients", patientsJson);
-        resp.add("payload", respPayload);
-
-        return gson.toJson(resp);
+        // --- Construir el JSON manualmente para evitar LocalDateTime ---
+        // convertimos de JSON a objeto para mandar a doctor la lista de pacientes
+        JsonArray arrayPatients = new JsonArray();
+        for (Patient p : patients) {
+            JsonObject jo = new JsonObject();
+            jo.addProperty("id", p.getId());
+            jo.addProperty("name", p.getName());
+            jo.addProperty("surname", p.getSurname());
+            jo.addProperty("email", p.getEmail());
+            jo.addProperty("phone", p.getPhonenumber());
+            jo.addProperty("dob", p.getDob());
+            if (p.getSex() != null) {
+                jo.addProperty("sex", p.getSex().toString());
+            }
+            arrayPatients.add(jo);
+        }
+        return gson.toJson(arrayPatients);
     }
 
     //LIST_SYMPTOMS -> Devuelve todos los síntomas de un paciente específico.
