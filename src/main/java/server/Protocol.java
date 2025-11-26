@@ -448,7 +448,7 @@ public class Protocol {
 
         // CRUCIAL: Llama al DAO para obtener la lista de objetos Patient que acabas de implementar.
         List<Patient> patients = DoctorDAO.getPatientsByDoctorId(doctorId);
-        System.out.println(patients);
+        //System.out.println(patients);
 
         // Convertimos la lista de objetos Java (Patient) en un array JSON.
         // Gson se encarga de convertir cada objeto Patient a su formato JSON.
