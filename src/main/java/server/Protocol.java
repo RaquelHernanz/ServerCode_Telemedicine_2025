@@ -263,18 +263,16 @@ public class Protocol {
             respPayload.addProperty("email", patient.getEmail());
             respPayload.addProperty("dob", patient.getDob());
             respPayload.addProperty("phone", patient.getPhonenumber());
-            respPayload.addProperty("sex", patient.getSex().toString());
-
+            if (patient.getSex() != null) {
+                respPayload.addProperty("sex", patient.getSex().toString());
+            }
             respPayload.addProperty("doctor_id", patient.getDoctor().getId());//AÑADIDO
             respPayload.addProperty("doctorName", patient.getDoctor().getName());
             respPayload.addProperty("doctorSurname", patient.getDoctor().getSurname());
             respPayload.addProperty("doctorEmail", patient.getDoctor().getEmail());
             respPayload.addProperty("doctorPhone", patient.getDoctor().getPhonenumber());
 
-            if (patient.getSex() != null) {
-                respPayload.addProperty("sex", patient.getSex().toString());
-            }
-            respPayload.addProperty("phone", patient.getPhonenumber());
+
 
             resp.add("payload", respPayload);
             return gson.toJson(resp);
