@@ -262,6 +262,8 @@ public class Protocol {
             respPayload.addProperty("surname", patient.getSurname());
             respPayload.addProperty("email", patient.getEmail());
             respPayload.addProperty("dob", patient.getDob());
+            respPayload.addProperty("phone", patient.getPhonenumber());
+            respPayload.addProperty("sex", patient.getSex().toString());
 
             respPayload.addProperty("doctor_id", patient.getDoctor().getId());//AÑADIDO
             respPayload.addProperty("doctorName", patient.getDoctor().getName());
