@@ -499,16 +499,17 @@ public class Protocol {
             arrayPatients.add(jo);
         }
 
-        // ✔ Necesitas usar baseResponse como TODOS los demás handlers
+        // Necesitas usar baseResponse como TODOS los demás handlers
         JsonObject resp = baseResponse("LIST_PATIENTS", requestId, "OK", "Patients retrieved");
+        // así se crea el JSON estándar para poder mandar la información bien al cliente
 
-        // ✔ el array SIEMPRE va dentro de payload
-        JsonObject respPayload = new JsonObject();
-        respPayload.add("patients", arrayPatients);
+        // el array SIEMPRE va dentro de payload
+        JsonObject respPayload = new JsonObject(); // se crea el objeto para mandar al cliente
+        respPayload.add("patients", arrayPatients); // añade los pacientes al payload que se va a mandar
 
         resp.add("payload", respPayload);
 
-        return gson.toJson(resp);
+        return gson.toJson(resp); // convertir ese objeto JSON a string para mandarlo por el socket
     }
 
     //LIST_SYMPTOMS -> Devuelve todos los síntomas de un paciente específico.
