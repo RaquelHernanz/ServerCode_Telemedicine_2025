@@ -436,7 +436,7 @@ public class Protocol {
 
 
     //LIST_PATIENTS -> Lista los pacientes asociados a un doctor que ha iniciado sesión.
-    private static String handleListPatients(JsonObject req, String requestId) {
+    /*private static String handleListPatients(JsonObject req, String requestId) {
         JsonObject payload = getPayload(req);
         // El doctor cliente debe enviar su ID (userId) en el payload.
         int doctorId = getInt(payload, "doctorId", -1);
@@ -471,6 +471,42 @@ public class Protocol {
         resp.addProperty("action", "LIST_PATIENTS");
         resp.addProperty("status", "OK");
         resp.add("patients", arrayPatients);
+
+        return gson.toJson(resp);
+    }*/
+    private static String handleListPatients(JsonObject req, String requestId) {
+        JsonObject payload = getPayload(req);
+        int doctorId = getInt(payload, "doctorId", -1);
+
+        if (doctorId <= 0) {
+            return error(requestId, "LIST_PATIENTS", "Missing or invalid userId (doctorId) in request.");
+        }
+
+        List<Patient> patients = DoctorDAO.getPatientsByDoctorId(doctorId);
+
+        JsonArray arrayPatients = new JsonArray();
+        for (Patient p : patients) {
+            JsonObject jo = new JsonObject();
+            jo.addProperty("id", p.getId());
+            jo.addProperty("name", p.getName());
+            jo.addProperty("surname", p.getSurname());
+            jo.addProperty("email", p.getEmail());
+            jo.addProperty("phone", p.getPhonenumber());
+            jo.addProperty("dob", p.getDob());
+            if (p.getSex() != null) {
+                jo.addProperty("sex", p.getSex().toString());
+            }
+            arrayPatients.add(jo);
+        }
+
+        // ✔ Necesitas usar baseResponse como TODOS los demás handlers
+        JsonObject resp = baseResponse("LIST_PATIENTS", requestId, "OK", "Patients retrieved");
+
+        // ✔ el array SIEMPRE va dentro de payload
+        JsonObject respPayload = new JsonObject();
+        respPayload.add("patients", arrayPatients);
+
+        resp.add("payload", respPayload);
 
         return gson.toJson(resp);
     }
