@@ -465,7 +465,14 @@ public class Protocol {
             }
             arrayPatients.add(jo);
         }
-        return gson.toJson(arrayPatients);
+
+        JsonObject resp = new JsonObject();
+        resp.addProperty("requestId", requestId);
+        resp.addProperty("action", "LIST_PATIENTS");
+        resp.addProperty("status", "OK");
+        resp.add("data", arrayPatients);
+
+        return gson.toJson(resp);
     }
 
     //LIST_SYMPTOMS -> Devuelve todos los síntomas de un paciente específico.
@@ -486,7 +493,7 @@ public class Protocol {
             JsonObject jo = new JsonObject();
             jo.addProperty("symptomsId", s.getId());
             jo.addProperty("description", s.getDescription());
-            jo.addProperty("timestamp", s.getDateTime().toString()); // 🔥 convertir a String
+            jo.addProperty("timestamp", s.getDateTime().toString()); // convertir a String
             arr.add(jo);
         }
 
