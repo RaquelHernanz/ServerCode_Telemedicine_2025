@@ -44,7 +44,6 @@ public class DataStorage {
             String today = LocalDate.now().format(DATE_FMT);
             Path file = patientDir(folder).resolve("signals_" + today + ".csv"); // nombre archivo
 
-            boolean newFile = !Files.exists(file); // para escribir cabecera si es nuevo
             int contadorVueltas=0;
             do{
                 if(contadorVueltas>0){
@@ -53,9 +52,10 @@ public class DataStorage {
                     // Por lo tanto, generamos un nuevo nombre con un sufijo numérico.
                     file = patientDir(folder).resolve("signals_" + today + "_" + contadorVueltas + ".csv");
                 }
-                newFile = !Files.exists(file);
                 contadorVueltas++;
-            }while(newFile);//Mientras el archivo exista, seguimos buscando un nombre nuevo
+            }while(Files.exists(file));//Mientras el archivo exista, seguimos buscando un nombre nuevo
+
+            boolean newFile = !Files.exists(file); // para escribir cabecera si es nuevo
 
             // Abrimos para APPEND (crear si no existe)
             try (BufferedWriter bw = Files.newBufferedWriter(file, StandardCharsets.UTF_8,
