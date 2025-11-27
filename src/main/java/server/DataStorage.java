@@ -45,6 +45,17 @@ public class DataStorage {
             Path file = patientDir(folder).resolve("signals_" + today + ".csv"); // nombre archivo
 
             boolean newFile = !Files.exists(file); // para escribir cabecera si es nuevo
+            int contadorVueltas=0;
+            do{
+                if(contadorVueltas>0){
+                    // Si ya hemos dado una vuelta, significa que el archivo ya existía
+                    // y hemos tenido que cambiar el nombre para evitar sobrescribirlo.
+                    // Por lo tanto, generamos un nuevo nombre con un sufijo numérico.
+                    file = patientDir(folder).resolve("signals_" + today + "_" + contadorVueltas + ".csv");
+                }
+                newFile = !Files.exists(file);
+                contadorVueltas++;
+            }while(newFile);//Mientras el archivo exista, seguimos buscando un nombre nuevo
 
             // Abrimos para APPEND (crear si no existe)
             try (BufferedWriter bw = Files.newBufferedWriter(file, StandardCharsets.UTF_8,
