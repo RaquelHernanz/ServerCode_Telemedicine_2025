@@ -777,7 +777,6 @@ public class Protocol {
         for (MessageDAO.MessageMeta m : msgs) {
             JsonObject jo = new JsonObject();
 
-            // 🔥 CAMBIO NECESARIO
             jo.addProperty("messageId", m.getId());
 
             jo.addProperty("doctorId", m.getDoctorId());
