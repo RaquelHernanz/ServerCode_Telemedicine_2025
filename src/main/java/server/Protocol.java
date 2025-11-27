@@ -524,19 +524,19 @@ public class Protocol {
 
         List<Symptoms> symptoms = SymptomDAO.getSymptomsByPatientId(patientId);
 
-        JsonArray arr = new JsonArray();
+        JsonArray symptomsArray = new JsonArray();
 
         for (Symptoms s : symptoms) {
             JsonObject jo = new JsonObject();
             jo.addProperty("symptomsId", s.getId());
             jo.addProperty("description", s.getDescription());
             jo.addProperty("timestamp", s.getDateTime().toString()); // convertir a String
-            arr.add(jo);
+            symptomsArray.add(jo);
         }
 
         JsonObject resp = baseResponse("LIST_SYMPTOMS", requestId, "OK", "Symptoms retrieved");
         JsonObject respPayload = new JsonObject();
-        respPayload.add("symptoms", arr);
+        respPayload.add("symptoms", symptomsArray);
         resp.add("payload", respPayload);
 
         return gson.toJson(resp);
