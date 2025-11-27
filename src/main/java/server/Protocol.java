@@ -530,7 +530,7 @@ public class Protocol {
             JsonObject jo = new JsonObject();
             jo.addProperty("symptomsId", s.getId());
             jo.addProperty("description", s.getDescription());
-            jo.addProperty("timestamp", s.getDateTime().toString()); // convertir a String
+            jo.addProperty("date", s.getDateTime().toString()); // convertir a String
             symptomsArray.add(jo);
         }
 
