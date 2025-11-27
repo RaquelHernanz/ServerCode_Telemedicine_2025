@@ -71,7 +71,7 @@ public class ServerMain {
            }
        } finally {
            // Se ejecuta siempre, asegurando el cierre limpio.
-           shutdownServer(); // Llama al nuevo método para detener hilos y cerrar la DB.
+           shutdownServer(); // Llama al nuevo métdo para detener hilos y cerrar la DB.
        }
    }
     // Lógica del hilo de consola (Interfaz de Administración)
