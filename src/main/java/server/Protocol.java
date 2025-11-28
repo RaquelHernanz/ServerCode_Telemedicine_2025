@@ -358,7 +358,9 @@ public class Protocol {
         // Convertimos valores a filas CSV (timestamp sintético: índice; valor; '-')
         JsonArray rows = new JsonArray();
         for (int i = 0; i < valuesArr.size(); i++) {
-            String line = i + "," + valuesArr.get(i).getAsInt() + ",-"; // "0,523,-"
+            //String line = i + "," + valuesArr.get(i).getAsInt() + ",-"; // "0,523,-"
+            String line = i + "," + valuesArr.get(i).getAsInt(); // "0,523"
+
             rows.add(line);
         }
 
@@ -412,7 +414,8 @@ public class Protocol {
         for (JsonElement rowEl : rows) {
             String row = rowEl.getAsString();      // "0,523,-"
             String[] parts = row.split(",");
-            if (parts.length >= 2) {
+            //if (parts.length >= 2) {
+            if (parts.length >= 1) { // ahora solo hay dos columnas: timestamp, valor
                 try {
                     int val = Integer.parseInt(parts[1].trim()); // la columna del valor
                     values.add(val);

@@ -65,7 +65,8 @@ public class DataStorage {
 
                 // Escribir cabecera la primera vez
                 if (newFile) {
-                    bw.write("timestamp,ecg,eda");
+                    //bw.write("timestamp,ecg,eda");
+                    bw.write("timestamp,value");
                     bw.newLine();
                 }
 
