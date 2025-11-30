@@ -1,0 +1,14 @@
+<component name="ArtifactManager">
+  <artifact type="jar" build-on-make="true" name="ServerCode_Telemedicine_2025:jar">
+    <output-path>$PROJECT_DIR$/out/artifacts/ServerCode_Telemedicine_2025_jar</output-path>
+    <root id="archive" name="ServerCode_Telemedicine_2025.jar">
+      <element id="module-output" name="ServerCode_Telemedicine_2025" />
+      <element id="extracted-dir" path="$MAVEN_REPOSITORY$/com/google/code/gson/gson/2.11.0/gson-2.11.0.jar" path-in-jar="/" />
+      <element id="extracted-dir" path="$MAVEN_REPOSITORY$/org/xerial/sqlite-jdbc/3.45.3.0/sqlite-jdbc-3.45.3.0.jar" path-in-jar="/" />
+      <element id="extracted-dir" path="$MAVEN_REPOSITORY$/org/slf4j/slf4j-api/1.7.36/slf4j-api-1.7.36.jar" path-in-jar="/" />
+      <element id="extracted-dir" path="$MAVEN_REPOSITORY$/com/google/errorprone/error_prone_annotations/2.27.0/error_prone_annotations-2.27.0.jar" path-in-jar="/" />
+      <element id="extracted-dir" path="$MAVEN_REPOSITORY$/io/ultreia/bluecove/2.1.1/bluecove-2.1.1.jar" path-in-jar="/" />
+      <element id="extracted-dir" path="$MAVEN_REPOSITORY$/org/apache/commons/commons-lang3/3.15.0/commons-lang3-3.15.0.jar" path-in-jar="/" />
+    </root>
+  </artifact>
+</component>
