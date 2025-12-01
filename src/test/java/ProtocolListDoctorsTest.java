@@ -13,9 +13,9 @@ public class ProtocolListDoctorsTest {
     @BeforeAll
     static void init() {
         DatabaseManager.connect();
-        try (Statement st = DatabaseManager.get().createStatement()) {
+        /*try (Statement st = DatabaseManager.get().createStatement()) {
             st.execute("DELETE FROM doctors");
-        } catch (Exception ignored) {}
+        } catch (Exception ignored) {}*/
     }
 
     @Test

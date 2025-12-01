@@ -17,7 +17,7 @@ public class ProtocolMeasurementTest {
     @BeforeAll
     static void initDb() {
         DatabaseManager.connect();
-        try {
+        /*try {
             var conn = DatabaseManager.get();
             var st = conn.createStatement();
             st.execute("DELETE FROM messages");
@@ -26,7 +26,7 @@ public class ProtocolMeasurementTest {
             st.execute("DELETE FROM symptoms");
             st.execute("DELETE FROM patients");
             st.execute("DELETE FROM doctors");
-        } catch (Exception ignored) {}
+        } catch (Exception ignored) {}*/
     }
 
     @Test

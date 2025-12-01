@@ -17,10 +17,10 @@ public class ProtocolMessageTest {
     @BeforeAll
     static void initDb() {
         DatabaseManager.connect();
-        clearAllTables();
+        /*clearAllTables();*/
     }
 
-    private static void clearAllTables() {
+    /*private static void clearAllTables() {
         try {
             Connection conn = DatabaseManager.get();
             try (Statement st = conn.createStatement()) {
@@ -34,7 +34,7 @@ public class ProtocolMessageTest {
         } catch (SQLException e) {
             System.err.println("[TEST] Error clearing tables: " + e.getMessage());
         }
-    }
+    }*/
 
     @Test
     void sendMessage_thenListConversation_ok() {

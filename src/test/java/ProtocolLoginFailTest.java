@@ -16,10 +16,10 @@ public class ProtocolLoginFailTest {
     @BeforeAll
     static void initDb() {
         DatabaseManager.connect();
-        clearAllTables();
+        /*clearAllTables();*/
     }
 
-    private static void clearAllTables() {
+    /*private static void clearAllTables() {
         try {
             Connection conn = DatabaseManager.get();
             try (Statement st = conn.createStatement()) {
@@ -33,7 +33,7 @@ public class ProtocolLoginFailTest {
         } catch (SQLException e) {
             System.err.println("[TEST] clear tables error: " + e.getMessage());
         }
-    }
+    }*/
 
     @Test
     void loginFails_wrongPassword() {
