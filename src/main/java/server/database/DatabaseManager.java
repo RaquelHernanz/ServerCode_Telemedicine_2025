@@ -1,15 +1,56 @@
 package server.database;
 
+import java.io.File;
+import java.net.URISyntaxException;
 import java.sql.*;
 
 /** Conexión con la base de datos (SQLite) */
 
 public class DatabaseManager {
-    private static final String URL = "jdbc:sqlite:telemedicina.db"; // fichero .db en la raíz
+    private static final String URL = "jdbc:sqlite:telemedicina.db"; // antigua ruta del fichero .db en la raíz
     private static Connection conn;
+    private static final String DB_NAME = "telemedicina.db";// fichero .db en la raíz
 
-    // Conecta (si no está ya conectada), activa PRAGMAs SQLite y crea tablas.
-    public static void connect() {
+    // Construye la URL de la BD buscando telemedicina.db hacia arriba en el árbol de carpetas
+    private static String buildDbUrl() throws URISyntaxException {
+        // Desde dónde se están ejecutando las clases / el JAR
+        File codeSource = new File(
+                DatabaseManager.class
+                        .getProtectionDomain()
+                        .getCodeSource()
+                        .getLocation()
+                        .toURI()
+        );
+
+        // Si es un directorio (IntelliJ: out/production/...), lo usamos;
+        // si es un JAR, usamos su carpeta padre.
+        File dir = codeSource.isDirectory()
+                ? codeSource
+                : codeSource.getParentFile();
+
+        File dbFile = null;
+
+        // Buscar telemedicina.db en dir, dir/.., dir/../.., etc.
+        while (dir != null) {
+            File candidate = new File(dir, DB_NAME);
+            if (candidate.exists()) {
+                dbFile = candidate;
+                break;
+            }
+            dir = dir.getParentFile();
+        }
+
+        // Si no lo encontró subiendo carpetas, usar la ruta relativa normal como último recurso
+        if (dbFile == null) {
+            dbFile = new File(DB_NAME);
+        }
+
+        System.out.println("[DB] Using database at: " + dbFile.getAbsolutePath());
+        return "jdbc:sqlite:" + dbFile.getAbsolutePath();
+    }
+
+    // La antigua versión del método connect (fue necesario cambiarlo porque el jar no accedía a la base de datos))
+    /*public static void connect() {
         try {
             if (conn == null || conn.isClosed()) {
                 conn = DriverManager.getConnection(URL);
@@ -25,6 +66,29 @@ public class DatabaseManager {
             }
         } catch (SQLException e) {
             System.err.println("[DB] Connection error: " + e.getMessage());
+        }
+    }*/
+
+    // Conecta (si no está ya conectada), activa PRAGMAs SQLite y crea tablas.
+    public static void connect() {
+        try {
+            if (conn == null || conn.isClosed()) {
+                String url = buildDbUrl();
+                conn = DriverManager.getConnection(url);
+                System.out.println("[DB] Connected to SQLite");
+
+                // PRAGMAs útiles para SQLite
+                try (Statement s = conn.createStatement()) {
+                    s.execute("PRAGMA foreign_keys = ON;");  // para la seguridad y fiabilidad
+                    s.execute("PRAGMA journal_mode = WAL;"); // para que rinda mejor cuando se lea y escriba a la vez
+                    s.execute("PRAGMA busy_timeout = 5000;"); // bloqueo de 5s
+                }
+                createTables(); // crea tablas al abrir la conexión
+            }
+        } catch (SQLException e) {
+            System.err.println("[DB] Connection error: " + e.getMessage());
+        } catch (URISyntaxException e) {
+            System.err.println("[DB] Error resolving DB path: " + e.getMessage());
         }
     }
 
