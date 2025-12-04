@@ -35,6 +35,7 @@ public class Protocol {
             }
 
             // Sacamos "action" (qué quiere hacer el cliente)
+            // si existe el campo "action", extrae el string que contiene la acción y sino lo pone como null
             String action = req.has("action") ? req.get("action").getAsString() : null;
             // requestId es opcional (para que el cliente correlacione la respuesta. el servidor se lo envia para que el cliente sepa relacionar)
             String requestId = req.has("requestId") ? req.get("requestId").getAsString() : null;
@@ -220,7 +221,7 @@ public class Protocol {
         respPayload.addProperty("phone", doctor.getPhonenumber());
 
         resp.add("payload", respPayload);
-        return gson.toJson(resp);
+        return gson.toJson(resp); //string
     }
 
     // Archivo: Protocol.java (REEMPLAZAR el métdo handleLogin actual)
